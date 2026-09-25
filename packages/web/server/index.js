@@ -39,6 +39,7 @@ import { registerTtsRoutes } from './lib/tts/routes.js';
 import { detectSayTtsCapability } from './lib/tts/capability-runtime.js';
 import { createTerminalRuntime } from './lib/terminal/runtime.js';
 import { createDictationRuntime } from './lib/dictation/runtime.js';
+import { createVoiceRealtimeRuntime } from './lib/voice-realtime/runtime.js';
 import {
   createGlobalUiEventBroadcaster,
   createGlobalMessageStreamHub,
@@ -583,6 +584,7 @@ let runtimeManagedRemoteTunnelToken = '';
 let runtimeManagedRemoteTunnelHostname = '';
 let terminalRuntime = null;
 let dictationRuntime = null;
+let voiceRealtimeRuntime = null;
 let messageStreamRuntime = null;
 const userProvidedOpenCodePassword = hmrStateRuntime.getUserProvidedOpenCodePassword(hmrState);
 const initialOpenCodeAuthState = hmrStateRuntime.resolveOpenCodeAuthFromState({
@@ -1151,6 +1153,7 @@ const tunnelWiringRuntime = createTunnelWiringRuntime({
 const startupPipelineRuntime = createStartupPipelineRuntime({
   createTerminalRuntime,
   createDictationRuntime,
+  createVoiceRealtimeRuntime,
   createMessageStreamWsRuntime,
   createServerStartupRuntime,
 });
@@ -2056,6 +2059,7 @@ async function main(options = {}) {
   });
   terminalRuntime = startupPipelineResult.terminalRuntime;
   dictationRuntime = startupPipelineResult.dictationRuntime;
+  voiceRealtimeRuntime = startupPipelineResult.voiceRealtimeRuntime;
   messageStreamRuntime = startupPipelineResult.messageStreamRuntime;
 
   try {
@@ -2118,6 +2122,11 @@ async function main(options = {}) {
         dictationRuntime?.stop?.();
       } catch {
         // best-effort shutdown of the dictation worker
+      }
+      try {
+        voiceRealtimeRuntime?.stop?.();
+      } catch {
+        // best-effort teardown of the realtime voice sockets
       }
       // Guest services are child processes; leaving before SIGTERM lands
       // (and the SIGKILL fallback fires) orphans them on the user's machine.

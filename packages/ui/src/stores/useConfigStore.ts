@@ -14,6 +14,7 @@ import { isPrimaryMode } from "@/components/chat/mobileControlsUtils";
 import { useSessionUIStore } from "@/sync/session-ui-store";
 import { useSelectionStore } from "@/sync/selection-store";
 import { loadDesktopSettings, updateDesktopSettings } from "@/lib/persistence";
+import type { RealtimeVoiceProviderSettings } from "@/lib/settings/parsers";
 import { useDirectoryStore } from "@/stores/useDirectoryStore";
 import { useProjectsStore } from "@/stores/useProjectsStore";
 import { resolveProjectForSessionDirectory } from "@/lib/projectResolution";
@@ -27,6 +28,13 @@ import { getRuntimeKey, subscribeRuntimeEndpointChanged } from "@/lib/runtime-sw
 
 const MODELS_DEV_API_URL = "https://models.dev/api.json";
 const MODELS_DEV_PROXY_URL = "/api/openchamber/models-metadata";
+
+// Verified default assistant brain for realtime voice (plan §1). The apiKey is
+// never defaulted — it only ever comes from user settings.
+const REALTIME_VOICE_DEFAULT_PROVIDER: RealtimeVoiceProviderSettings = {
+    url: 'https://langfuse-relayx.isvbytes.com/v1',
+    model: 'deepseek-v4-flash-0731',
+};
 
 const FALLBACK_PROVIDER_ID = "opencode";
 const FALLBACK_MODEL_ID = "big-pickle";
@@ -1156,6 +1164,10 @@ interface ConfigStore {
     sttModel: string;
     sttLocalModel: string;
     sttLanguage: string;
+    // Realtime voice conversation (plan §6: exactly these three keys)
+    realtimeVoiceEnabled: boolean;
+    realtimeVoiceBrain: 'assistant' | 'session';
+    realtimeVoiceProvider: RealtimeVoiceProviderSettings;
     showMessageTTSButtons: boolean;
     ttsInputMode: 'sanitized' | 'raw' | 'summarized';
     // Summarization settings
@@ -1184,6 +1196,9 @@ interface ConfigStore {
     setSttModel: (model: string) => void;
     setSttLocalModel: (model: string) => void;
     setSttLanguage: (lang: string) => void;
+    setRealtimeVoiceEnabled: (enabled: boolean) => void;
+    setRealtimeVoiceBrain: (brain: 'assistant' | 'session') => void;
+    setRealtimeVoiceProvider: (provider: RealtimeVoiceProviderSettings) => void;
     setShowMessageTTSButtons: (show: boolean) => void;
     setTtsInputMode: (mode: 'sanitized' | 'raw' | 'summarized') => void;
     setSummarizeMessageTTS: (enabled: boolean) => void;
@@ -1442,7 +1457,7 @@ export const useConfigStore = create<ConfigStore>()(
                         const saved = localStorage.getItem('openaiCompatibleVoice');
                         if (saved) return saved;
                     }
-                    return 'af_sky';
+                    return 'zf_001';
                 })(),
                 // OpenAI-compatible custom server TTS model
                 openaiCompatibleTtsModel: (() => {
@@ -1505,6 +1520,44 @@ export const useConfigStore = create<ConfigStore>()(
                         if (saved !== null) return saved;
                     }
                     return '';
+                })(),
+                // Realtime voice conversation is opt-in until it has proven
+                // itself on real devices (echo return loss varies per device).
+                realtimeVoiceEnabled: (() => {
+                    if (typeof window !== 'undefined') {
+                        const saved = localStorage.getItem('realtimeVoiceEnabled');
+                        if (saved === 'true') return true;
+                    }
+                    return false;
+                })(),
+                realtimeVoiceBrain: (() => {
+                    if (typeof window !== 'undefined') {
+                        const saved = localStorage.getItem('realtimeVoiceBrain');
+                        if (saved === 'assistant' || saved === 'session') return saved;
+                    }
+                    return 'assistant' as const;
+                })(),
+                realtimeVoiceProvider: (() => {
+                    if (typeof window !== 'undefined') {
+                        const saved = localStorage.getItem('realtimeVoiceProvider');
+                        if (saved) {
+                            try {
+                                const parsed: unknown = JSON.parse(saved);
+                                if (parsed && typeof parsed === 'object') {
+                                    const candidate = parsed as Partial<RealtimeVoiceProviderSettings>;
+                                    const url = typeof candidate.url === 'string' ? candidate.url : '';
+                                    const model = typeof candidate.model === 'string' ? candidate.model : '';
+                                    const apiKey = typeof candidate.apiKey === 'string' && candidate.apiKey.length > 0
+                                        ? candidate.apiKey
+                                        : undefined;
+                                    return apiKey ? { url, model, apiKey } : { url, model };
+                                }
+                            } catch {
+                                // A corrupt saved value falls back to the defaults below.
+                            }
+                        }
+                    }
+                    return { ...REALTIME_VOICE_DEFAULT_PROVIDER };
                 })(),
                 // Show TTS buttons on messages - disabled by default until user enables it
                 showMessageTTSButtons: (() => {
@@ -3302,6 +3355,32 @@ export const useConfigStore = create<ConfigStore>()(
                         localStorage.setItem('sttLanguage', lang);
                     }
                     updateDesktopSettings({ sttLanguage: lang }).catch(() => {});
+                },
+
+                setRealtimeVoiceEnabled: (enabled: boolean) => {
+                    set({ realtimeVoiceEnabled: enabled });
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('realtimeVoiceEnabled', String(enabled));
+                    }
+                    updateDesktopSettings({ realtimeVoiceEnabled: enabled }).catch(() => {});
+                },
+
+                setRealtimeVoiceBrain: (brain: 'assistant' | 'session') => {
+                    set({ realtimeVoiceBrain: brain });
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('realtimeVoiceBrain', brain);
+                    }
+                    updateDesktopSettings({ realtimeVoiceBrain: brain }).catch(() => {});
+                },
+
+                setRealtimeVoiceProvider: (provider: RealtimeVoiceProviderSettings) => {
+                    set({ realtimeVoiceProvider: provider });
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('realtimeVoiceProvider', JSON.stringify(provider));
+                    }
+                    // Secret registry field: the server accepts the write but
+                    // never echoes it back; localStorage stays the live copy.
+                    updateDesktopSettings({ realtimeVoiceProvider: provider }).catch(() => {});
                 },
 
                 setShowMessageTTSButtons: (show: boolean) => {

@@ -8,6 +8,7 @@ describe('startup pipeline runtime', () => {
     const runtime = createStartupPipelineRuntime({
       createTerminalRuntime: () => ({}),
       createDictationRuntime: () => ({}),
+      createVoiceRealtimeRuntime: () => ({}),
       createMessageStreamWsRuntime: () => ({}),
       createServerStartupRuntime: () => ({
         resolveBindHost: () => '127.0.0.1',

@@ -173,6 +173,16 @@
     "sttLanguage": {
       "scope": "profile"
     },
+    "realtimeVoiceEnabled": {
+      "scope": "profile"
+    },
+    "realtimeVoiceBrain": {
+      "scope": "profile"
+    },
+    "realtimeVoiceProvider": {
+      "scope": "instance",
+      "secret": true
+    },
     "tunnelProvider": {
       "scope": "instance"
     },

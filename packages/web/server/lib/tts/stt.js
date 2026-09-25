@@ -18,9 +18,10 @@ import { normalizeCustomOpenAIBaseURL } from './base-url.js';
  * @param {string} [opts.baseURL]    - Base URL of the compatible server (including /v1)
  * @param {string} [opts.apiKey]     - Optional API key for the compatible server
  * @param {string} [opts.language]   - Optional BCP-47 language hint (e.g. 'en')
+ * @param {AbortSignal} [opts.signal] - Optional abort signal; cancels the in-flight HTTP request
  * @returns {Promise<string>} Transcribed text
  */
-export async function transcribeAudio({ audioBuffer, mimeType, model, baseURL, apiKey, language }) {
+export async function transcribeAudio({ audioBuffer, mimeType, model, baseURL, apiKey, language, signal }) {
   const normalizedBaseURLResult = normalizeCustomOpenAIBaseURL(baseURL);
   if (normalizedBaseURLResult.error) {
     throw new Error(normalizedBaseURLResult.error);
@@ -32,7 +33,7 @@ export async function transcribeAudio({ audioBuffer, mimeType, model, baseURL, a
   }
 
   const clientOpts = {
-    apiKey: apiKey || process.env.OPENAI_API_KEY || 'not-required',
+    apiKey: apiKey || process.env.OPENCHAMBER_VOICE_STT_KEY || process.env.OPENAI_API_KEY || 'not-required',
   };
   clientOpts.baseURL = normalizedBaseURL;
 
@@ -50,7 +51,7 @@ export async function transcribeAudio({ audioBuffer, mimeType, model, baseURL, a
     model,
     response_format: 'json',
     ...(language ? { language } : {}),
-  });
+  }, signal ? { signal } : undefined);
 
   return result.text ?? '';
 }

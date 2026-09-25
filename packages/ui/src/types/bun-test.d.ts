@@ -7,6 +7,7 @@ declare module "bun:test" {
   export interface ExpectResult {
     toEqual(expected: unknown): void;
     toBe(expected: unknown): void;
+    toBeCloseTo(expected: number, numDigits?: number): void;
     toBeTruthy(): void;
     toBeFalsy(): void;
     toBeNull(): void;
@@ -17,6 +18,7 @@ declare module "bun:test" {
     toMatchObject(expected: unknown): void;
     rejects: {
       toThrow(expected?: string | RegExp | (new (...args: never[]) => unknown)): Promise<void>;
+      toBe(expected: unknown): Promise<void>;
     };
     toBeGreaterThan(expected: number): void;
     toBeGreaterThanOrEqual(expected: number): void;

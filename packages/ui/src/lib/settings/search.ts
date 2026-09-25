@@ -1028,6 +1028,12 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['stt', 'dictation', 'voice input', 'transcribe', 'whisper', 'parakeet', 'microphone'],
   },
   {
+    id: 'voice.realtime',
+    page: 'voice',
+    titleKey: 'settings.voice.page.section.realtimeVoice',
+    keywords: ['realtime', 'voice conversation', 'hands free', 'barge in', 'interrupt', 'push to talk', 'brain', 'subtitles'],
+  },
+  {
     id: 'tunnel.provider',
     page: 'tunnel',
     titleKey: 'settings.openchamber.tunnel.field.provider',

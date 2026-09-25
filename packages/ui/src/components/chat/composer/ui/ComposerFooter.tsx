@@ -15,8 +15,10 @@ import React from 'react';
 
 import { SessionGoalButton, SessionGoalObjectiveCounter } from '@/components/chat/SessionGoalButton';
 import { ComposerDictation } from '@/components/dictation/ComposerDictation';
+import { ComposerVoiceButton } from '@/components/voice-realtime/ComposerVoiceButton';
 import { Icon } from '@/components/icon/Icon';
 import type { GuestAttachItem } from '@/hooks/useGuestSurfaces';
+import type { UseVoiceConversationResult } from '@/hooks/useVoiceConversation';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { ModelControls } from '../../ModelControls';
@@ -28,6 +30,7 @@ import type { BtwSelection } from '@/stores/useBtwStore';
 
 const MemoModelControls = React.memo(ModelControls);
 const MemoComposerDictation = React.memo(ComposerDictation);
+const MemoComposerVoiceButton = React.memo(ComposerVoiceButton);
 
 export interface ComposerFooterProps {
     isMobile: boolean;
@@ -72,6 +75,8 @@ export interface ComposerFooterProps {
     onDictationInsertAndSend: (text: string) => void;
     onDictationStart: () => void;
     onDictationContentHeightChange: (height: number | null) => void;
+    /** Shared realtime-voice engine; the panel lives at the wrapper level. */
+    realtimeVoice: UseVoiceConversationResult;
     isBtw?: boolean;
     modelSessionId?: string | null;
     btwSelection: BtwSelection;
@@ -119,6 +124,7 @@ export function ComposerFooter(props: ComposerFooterProps) {
         onDictationInsertAndSend,
         onDictationStart,
         onDictationContentHeightChange,
+        realtimeVoice,
         isBtw = false,
         modelSessionId,
         btwSelection,
@@ -174,6 +180,11 @@ export function ComposerFooter(props: ComposerFooterProps) {
                         </div>
                         <div className="flex items-center min-w-0 gap-x-1 justify-end">
                             <div className="flex items-center gap-x-1 flex-shrink-0">
+                                {!isBtw ? <MemoComposerVoiceButton
+                                    voice={realtimeVoice}
+                                    footerIconButtonClass={footerIconButtonClass}
+                                    iconSizeClass={iconSizeClass}
+                                /> : null}
                                 {!isBtw ? <button
                                     type="button"
                                     className={footerIconButtonClass}
@@ -255,6 +266,11 @@ export function ComposerFooter(props: ComposerFooterProps) {
                     </div>
                     <div className={cn('flex items-center flex-1 justify-end', footerGapClass, 'md:gap-x-3')}>
                         {isBtw ? <ModelControls className="flex-1 min-w-0 justify-end" sessionId={modelSessionId ?? null} selection={btwSelection} /> : <MemoModelControls className={cn('flex-1 min-w-0 justify-end')} />}
+                        {!isBtw ? <MemoComposerVoiceButton
+                            voice={realtimeVoice}
+                            footerIconButtonClass={footerIconButtonClass}
+                            iconSizeClass={iconSizeClass}
+                        /> : null}
                         {!isBtw ? <MemoComposerDictation
                             radius={chatInputRadius}
                             isMobile={isMobile}

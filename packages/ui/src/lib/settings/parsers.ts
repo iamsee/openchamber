@@ -394,6 +394,25 @@ export const parseSttProvider = fromSchema(
   }),
 );
 
+export type RealtimeVoiceProviderSettings = { url: string; model: string; apiKey?: string };
+
+/**
+ * The collapsed realtime-voice provider object. One key on purpose (plan §6):
+ * url/model follow the STT server-field bounds, and apiKey is kept only when
+ * non-empty so the stored document never carries an empty secret.
+ */
+export const parseRealtimeVoiceProvider = fromSchema(
+  z.object({
+    url: trimmed.transform((value) => value.slice(0, 2048)),
+    model: trimmed.transform((value) => value.slice(0, 256)),
+    apiKey: trimmed.optional().catch(undefined),
+  }).transform((provider): RealtimeVoiceProviderSettings => (
+    provider.apiKey
+      ? { url: provider.url, model: provider.model, apiKey: provider.apiKey }
+      : { url: provider.url, model: provider.model }
+  )),
+);
+
 /** Legacy 'auto' never read OS chrome config; it means right. */
 export const parseDesktopWindowControlsPosition = fromSchema(
   trimmed.pipe(z.enum(['left', 'right', 'auto'])).transform((mode): 'left' | 'right' => (mode === 'left' ? 'left' : 'right')),

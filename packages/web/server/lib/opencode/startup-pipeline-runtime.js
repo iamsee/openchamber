@@ -4,6 +4,7 @@ export const createStartupPipelineRuntime = (dependencies) => {
   const {
     createTerminalRuntime,
     createDictationRuntime,
+    createVoiceRealtimeRuntime,
     createMessageStreamWsRuntime,
     createServerStartupRuntime,
   } = dependencies;
@@ -87,6 +88,13 @@ export const createStartupPipelineRuntime = (dependencies) => {
       modelsDir: dictationModelsDir,
     });
 
+    const voiceRealtimeRuntime = createVoiceRealtimeRuntime({
+      server,
+      uiAuthController,
+      isRequestOriginAllowed,
+      rejectWebSocketUpgrade,
+    });
+
     const messageStreamRuntime = createMessageStreamWsRuntime({
       server,
       uiAuthController,
@@ -145,6 +153,7 @@ export const createStartupPipelineRuntime = (dependencies) => {
     return {
       terminalRuntime,
       dictationRuntime,
+      voiceRealtimeRuntime,
       messageStreamRuntime,
     };
   };

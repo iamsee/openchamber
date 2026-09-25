@@ -56,6 +56,7 @@ import {
   parsePositiveInteger,
   parseProjects,
   parsePwaAppName,
+  parseRealtimeVoiceProvider,
   parseRecentEfforts,
   parseShortcutOverrides,
   parseSkillCatalogs,
@@ -71,6 +72,7 @@ import {
   type ManagedRemoteTunnelPreset,
   type ModelRef,
   type NotificationTemplates,
+  type RealtimeVoiceProviderSettings,
   type SettingsParser,
   type SettingsRawDocument,
   type SkillCatalogConfig,
@@ -275,6 +277,14 @@ export const SETTINGS_REGISTRY = {
   sttModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttModel') }),
   sttLocalModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttLocalModel') }),
   sttLanguage: field({ scope: 'profile', parse: parseTrimmedStringUpTo(64), ui: configField('sttLanguage') }),
+
+  // ── Realtime voice conversation (plan §6: exactly these three keys) ──
+  realtimeVoiceEnabled: field({ scope: 'profile', parse: parseBoolean, ui: configField('realtimeVoiceEnabled') }),
+  realtimeVoiceBrain: field({ scope: 'profile', parse: parseOneOf(['assistant', 'session']), ui: configField('realtimeVoiceBrain') }),
+  // Collapsed provider object; secret because it can carry an apiKey:
+  // accepted on write, never returned by a read. The device-local copy in
+  // the config store's localStorage is the live one (like sttApiKey).
+  realtimeVoiceProvider: field<RealtimeVoiceProviderSettings>({ scope: 'instance', secret: true, parse: parseRealtimeVoiceProvider }),
 
   // ── Tunnels (instance) ──
   tunnelProvider: field({ scope: 'instance', parse: mapParser(parseNonEmptyTrimmedString, (value) => value.toLowerCase()) }),

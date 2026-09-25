@@ -1,5 +1,7 @@
 import React from 'react';
 import { ComposerDictation } from '@/components/dictation/ComposerDictation';
+import { useVoiceConversation } from '@/hooks/useVoiceConversation';
+import { VoiceConversationBar } from '@/components/voice-realtime/VoiceConversationBar';
 // sessionStore removed — currentSessionId comes from useSessionUIStore
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -102,6 +104,7 @@ import { useAuthSessionStore } from '@/lib/runtime-auth-expiry';
 import { useI18n } from '@/lib/i18n';
 import { sessionEvents } from '@/lib/sessionEvents';
 import { fetchResponseStyleInstruction } from '@/lib/responseStyle';
+import { VOICE_STYLE_INSTRUCTION } from '@/lib/voiceStyle';
 import { wrapSystemReminder } from '@/lib/systemReminder';
 import { getSyncMessages } from '@/sync/sync-refs';
 import { eventMatchesShortcut, getEffectiveShortcutCombo, normalizeCombo } from '@/lib/shortcuts';
@@ -1217,6 +1220,9 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             starter chips: on mobile the collapsed pill has no mounted textarea,
             so the DOM-first input snapshot would read empty content. */
         presetText?: string;
+        /** This send originated from voice conversation mode: the reply will be
+            read aloud, so a synthetic spoken-style instruction rides along. */
+        voiceMode?: boolean;
     };
     const handleSubmitRef = React.useRef<(options?: SubmitOptions) => Promise<void>>(async () => {});
 
@@ -1876,6 +1882,15 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             }
         }
 
+        // Voice-originated sends keep the selected model; only the reply style
+        // changes, because it will be read aloud.
+        if (options?.voiceMode) {
+            additionalParts.push({
+                text: wrapSystemReminder(VOICE_STYLE_INSTRUCTION),
+                synthetic: true,
+            });
+        }
+
         const expandOutgoingSnippets = async () => {
             try {
                 const expandText = useSnippetsStore.getState().expandText;
@@ -2131,13 +2146,13 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         }, 0);
     }, [keepTranscriptForOrigin]);
 
-    const handleDictationInsertAndSend = React.useCallback((text: string) => {
+    const handleDictationInsertAndSend = React.useCallback((text: string, opts?: { voiceMode?: boolean }) => {
         if (keepTranscriptForOrigin(text)) return;
         // Same as preset chips: the composed text goes into the submit as an
         // explicit override instead of being staged in the textarea, which may
         // not be mounted (collapsed mobile pill).
         const next = appendInlineText(composerRef.current?.getValue() ?? messageRef.current, text);
-        void handleSubmitRef.current({ presetText: next });
+        void handleSubmitRef.current({ presetText: next, voiceMode: opts?.voiceMode });
     }, [keepTranscriptForOrigin]);
 
     // A command with an argument sends once the isolated composer owns its draft.
@@ -3456,6 +3471,11 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
     }, []);
 
+    // One realtime-voice engine per composer: the footer renders the trigger
+    // button and the panel above the composer renders the subtitles, so both
+    // must share this instance.
+    const realtimeVoice = useVoiceConversation({ onInsertAndSend: handleDictationInsertAndSend });
+
     const openMobileAttachSheet = React.useCallback(() => {
         // Same order as handleOpenMobilePanel: mark the sheet open BEFORE the
         // blur so the collapse watcher sees an overlay when the keyboard-close
@@ -3621,6 +3641,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         onOpenPicker={setMobileDraftPicker}
                     />
                 ) : null}
+                {!isBtwActive ? <VoiceConversationBar voice={realtimeVoice} className="mb-1.5" /> : null}
                 <div
                     // Desktop: layout-transparent. Mobile: positioning host for
                     // the wrapper-level dictation overlay across pill/full states.
@@ -3856,6 +3877,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         onDictationInsertAndSend={handleDictationInsertAndSend}
                         onDictationStart={markDictationStart}
                         onDictationContentHeightChange={handleDictationContentHeightChange}
+                        realtimeVoice={realtimeVoice}
                         isBtw={isBtwActive}
                         modelSessionId={btwComposerSessionId}
                         btwSelection={effectiveBtwSelection}

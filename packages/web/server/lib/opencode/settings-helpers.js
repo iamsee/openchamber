@@ -57,6 +57,8 @@ export const createSettingsHelpers = (dependencies) => {
   const STT_SERVER_URL_MAX_LENGTH = 2048;
   const STT_MODEL_MAX_LENGTH = 256;
   const STT_LANGUAGE_MAX_LENGTH = 64;
+  const REALTIME_VOICE_URL_MAX_LENGTH = 2048;
+  const REALTIME_VOICE_MODEL_MAX_LENGTH = 256;
   const VERSION_STRING_MAX_LENGTH = 128;
   const SHORTCUT_OVERRIDE_KEY_MAX_LENGTH = 128;
   const SHORTCUT_OVERRIDE_VALUE_MAX_LENGTH = 128;
@@ -958,6 +960,37 @@ export const createSettingsHelpers = (dependencies) => {
       if (trimmed.length <= STT_LANGUAGE_MAX_LENGTH) {
         result.sttLanguage = trimmed;
       }
+    }
+
+    // Realtime voice conversation (plan §6: exactly these three keys). The
+    // provider mirrors parseRealtimeVoiceProvider in ui/src/lib/settings/parsers.ts.
+    if (typeof candidate.realtimeVoiceEnabled === 'boolean') {
+      result.realtimeVoiceEnabled = candidate.realtimeVoiceEnabled;
+    }
+    if (typeof candidate.realtimeVoiceBrain === 'string') {
+      const brain = candidate.realtimeVoiceBrain.trim();
+      if (brain === 'assistant' || brain === 'session') {
+        result.realtimeVoiceBrain = brain;
+      }
+    }
+    if (
+      candidate.realtimeVoiceProvider &&
+      typeof candidate.realtimeVoiceProvider === 'object' &&
+      !Array.isArray(candidate.realtimeVoiceProvider) &&
+      typeof candidate.realtimeVoiceProvider.url === 'string' &&
+      typeof candidate.realtimeVoiceProvider.model === 'string'
+    ) {
+      const provider = {
+        url: candidate.realtimeVoiceProvider.url.trim().slice(0, REALTIME_VOICE_URL_MAX_LENGTH),
+        model: candidate.realtimeVoiceProvider.model.trim().slice(0, REALTIME_VOICE_MODEL_MAX_LENGTH),
+      };
+      if (typeof candidate.realtimeVoiceProvider.apiKey === 'string') {
+        const apiKey = candidate.realtimeVoiceProvider.apiKey.trim();
+        if (apiKey.length > 0) {
+          provider.apiKey = apiKey;
+        }
+      }
+      result.realtimeVoiceProvider = provider;
     }
 
     // The registry is the last word on what a client may persist: a key the
