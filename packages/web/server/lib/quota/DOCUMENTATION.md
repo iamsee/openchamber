@@ -20,6 +20,10 @@ extension applies the same policy in its own process at activation.
 
 These provider IDs are currently dispatchable via `fetchQuotaForProvider(providerId)` in `packages/web/server/lib/quota/providers/index.js`.
 
+Where this table says "OpenCode `auth.json`", the credential is read through
+`../opencode/auth.js`, which answers from OpenCode 2.x's own credential
+database first and the legacy file second (see the opencode module docs).
+
 | Provider ID | Display name | Module | Auth aliases/keys |
 | --- | --- | --- | --- |
 | `claude` | Claude | `providers/claude/` | Claude Code Keychain entry, Claude Code credentials file, OpenCode `auth.json` (`anthropic`, `claude`), `CLAUDE_CODE_OAUTH_TOKEN` |

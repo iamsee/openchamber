@@ -30,7 +30,7 @@ describe('useRoutingStore', () => {
     const store = useRoutingStore.getState();
     store.applyState({ ...ROUTING_UNAVAILABLE, available: true, autoReady: true, tokenPresent: true, heldPermissions: [{ permissionId: 'p2', score: 0.7, kind: null }] });
     expect(Object.keys(useRoutingStore.getState().held)).toEqual(['p2']);
-    useRoutingStore.getState().applyAvailability({ available: false, autoReady: false, tokenPresent: false });
+    useRoutingStore.getState().applyAvailability({ available: false, autoReady: false, tokenPresent: false, jevSource: 'zen-free' });
     expect(Object.keys(useRoutingStore.getState().held)).toEqual(['p2']);
     expect(useRoutingStore.getState().autoReady).toBe(false);
   });

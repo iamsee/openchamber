@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Session } from '@opencode-ai/sdk/v2/client';
+import type { Session } from '@/lib/opencode/model';
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +21,7 @@ import { getRuntimeKey } from '@/lib/runtime-switch';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { AgentSelector } from './AgentSelector';
 import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
+import { listModelVariantIds, type ModelVariantSource } from '@/lib/modelVariants';
 
 const buildSourcePart = (source: FusionSource, text: string, index: number): string => {
   const title = source.session.title?.trim() || source.session.id;
@@ -92,8 +93,8 @@ export function MultiRunFusionDialog({
   }, [allSessions, open, parsed, excludedSources]);
 
   const selectedProvider = providers.find((provider) => provider.id === providerID);
-  const selectedProviderModel = selectedProvider?.models.find((model) => model.id === modelID);
-  const variantKeys = selectedProviderModel?.variants ? Object.keys(selectedProviderModel.variants) : [];
+  const selectedProviderModel = selectedProvider?.models.find((model) => model.id === modelID) as { variants?: ModelVariantSource } | undefined;
+  const variantKeys = listModelVariantIds(selectedProviderModel?.variants);
   const canStart = Boolean(parsed && sessionsReady && providerID && modelID && sources.length > 0 && !isStarting);
 
   const handleModelSelect = React.useCallback((model: ModelSelectionWithId) => {
@@ -114,7 +115,7 @@ export function MultiRunFusionDialog({
     };
     setIsStarting(true);
     try {
-      const usableSources = await loadFusionOutputs(client, sources, parsed, assertCurrent);
+      const usableSources = await loadFusionOutputs(sources, parsed, assertCurrent);
 
       if (usableSources.length === 0) {
         toast.error(t('multirun.fusion.toast.noOutputs'));
@@ -128,10 +129,11 @@ export function MultiRunFusionDialog({
         renderMagicPrompt('session.fusion.visible'),
         renderMagicPrompt('session.fusion.instructions'),
       ]);
-      const fusionSession = await createMultiRunSession(client, {
+      const fusionSession = await createMultiRunSession({
         title: fusionTitle, directory,
         identity: { group: parsed.group, groupSlug: parsed.groupSlug, runGroup: parsed.runGroup,
           role: 'fusion', providerID, modelID },
+        selection: { model: { providerID, id: modelID, variant: variant || undefined }, agent: agent || undefined },
       }, assertCurrent);
       registerMultiRunSession(fusionSession, directory);
 
@@ -143,14 +145,13 @@ export function MultiRunFusionDialog({
         runtimeKey,
         id: fusionSession.id,
         providerID,
-        modelID,
-        variant: variant || undefined,
+        model: { providerID, id: modelID, variant: variant || undefined },
         agent: agent || undefined,
         text: visiblePrompt,
-        additionalParts: [
-          { text: instructionsPrompt, synthetic: true },
-          ...usableSources.map((item, index) => ({ text: buildSourcePart(item.source, item.text, index), synthetic: true })),
-          { text: '\n\n--- FUSION INPUTS END ---\nNow write the final fused answer.', synthetic: true },
+        context: [
+          { text: instructionsPrompt },
+          ...usableSources.map((item, index) => ({ text: buildSourcePart(item.source, item.text, index) })),
+          { text: '\n\n--- FUSION INPUTS END ---\nNow write the final fused answer.' },
         ],
         directory,
       });

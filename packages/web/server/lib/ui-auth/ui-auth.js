@@ -1,5 +1,11 @@
 import crypto from 'crypto';
-import { SignJWT, jwtVerify } from 'jose';
+
+// jose is loaded on the first session check, not with the server.
+let josePending;
+const loadJose = () => {
+  josePending ??= import('jose');
+  return josePending;
+};
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -267,7 +273,34 @@ const getUrlAuthTokenFromRequest = (req) => {
       token = undefined;
     }
   }
-  return typeof token === 'string' && token.trim() ? token.trim() : null;
+  if (typeof token === 'string' && token.trim()) return token.trim();
+  return getServedPageSubresourceToken(req);
+};
+
+/**
+ * An HTML file shown through `/api/fs/serve/` loads its own images, styles
+ * and scripts with plain relative URLs, which carry no token: only the page's
+ * URL has one. The browser sends that page URL as the Referer of every
+ * same-origin subresource request, so the page's token is taken from there,
+ * and only when both the page and the subresource live under `/api/fs/serve/`.
+ * Nothing else about the token changes: it is still checked for validity,
+ * expiry and scope like a query token.
+ */
+const SERVED_PAGE_PREFIX = '/api/fs/serve/';
+
+const getServedPageSubresourceToken = (req) => {
+  if (!getRequestPathname(req).startsWith(SERVED_PAGE_PREFIX)) return null;
+  const referer = req?.headers?.referer;
+  const value = Array.isArray(referer) ? referer[0] : referer;
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    const url = new URL(value);
+    if (!url.pathname.startsWith(SERVED_PAGE_PREFIX)) return null;
+    const token = url.searchParams.get('oc_url_token');
+    return token && token.trim() ? token.trim() : null;
+  } catch {
+    return null;
+  }
 };
 
 const getRequestPathname = (req) => {
@@ -334,6 +367,7 @@ const isUrlAuthWebSocketPath = (pathname) => {
     || pathname === '/api/dictation/ws'
     || pathname === '/api/voice/realtime'
     || pathname === '/api/dev-tunnel'
+    || /^\/api\/guests\/[a-z][a-z0-9-]*\/surface\/ws$/.test(pathname)
     || pathname.startsWith('/api/preview/proxy/');
 };
 
@@ -727,6 +761,7 @@ export const createUiAuth = ({
       return false;
     }
     try {
+      const { jwtVerify } = await loadJose();
       await jwtVerify(token, jwtSecret);
       return true;
     } catch {
@@ -736,6 +771,7 @@ export const createUiAuth = ({
 
   const issueSession = async (req, res, { trustDevice = false } = {}) => {
     const ttlMs = resolveSessionTtlMs(trustDevice);
+    const { SignJWT } = await loadJose();
     const token = await new SignJWT({ type: 'ui-session' })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()

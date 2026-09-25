@@ -88,6 +88,12 @@ const requestBodySchema = z.object({
   body: z.string().max(64_000).optional(),
 });
 
+const serviceRequestBodySchema = requestBodySchema.extend({
+  // The shared-surface viewer open in the same window, if any. The host
+  // resolves it; an id that is not a live viewer of this extension is ignored.
+  viewerId: z.string().min(1).max(128).optional(),
+});
+
 const fileBodySchema = z.object({
   op: z.enum(['read', 'write', 'list', 'stat']),
   path: z.string().min(1).max(GUEST_FILE_PATH_MAX),
@@ -195,6 +201,8 @@ export const registerGuestRoutes = (app, {
   resolveGitBinaryForSpawn,
   resolveOptionalProjectDirectory,
   getSmallModelService,
+  onGuestDeactivated = async () => false,
+  surfaceViewerHeaders = () => null,
 }) => {
   const persistPath = extensionsPersistPath(openchamberDataDir);
   const authPath = guestAuthPersistPath(openchamberDataDir);
@@ -309,6 +317,7 @@ export const registerGuestRoutes = (app, {
       if (!isGuestPanelId(id)) {
         return res.status(404).json({ error: 'not-found' });
       }
+      const removed = await loadGuest(id);
       const result = await uninstallGuest(id, persistPath);
       if (!result.ok) {
         const status = result.code === 'bundled' ? 400 : 404;
@@ -316,6 +325,9 @@ export const registerGuestRoutes = (app, {
       }
       // Remove means forget: tokens, client secret, and settings go with the package.
       await forgetGuestAuth(id, authPath);
+      // A role this package stood in for (the agent's browser) goes back to
+      // the host's own, and the user is told rather than finding out mid-task.
+      await onGuestDeactivated({ guestId: id, guestName: removed?.name ?? id });
       res.status(204).end();
     } catch (error) {
       console.error('Failed to uninstall guest:', error);
@@ -542,7 +554,7 @@ export const registerGuestRoutes = (app, {
       if (!guest?.service) {
         return res.status(404).json({ error: 'not-found' });
       }
-      const parsed = requestBodySchema.safeParse(req.body);
+      const parsed = serviceRequestBodySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: 'invalid-request' });
       }
@@ -557,11 +569,12 @@ export const registerGuestRoutes = (app, {
         path: parsed.data.path,
         query: parsed.data.query,
         body: parsed.data.body,
+        headers: parsed.data.viewerId ? surfaceViewerHeaders(guest.id, parsed.data.viewerId) ?? undefined : undefined,
       });
       res.json(result);
     } catch (error) {
       if (error instanceof GuestServiceError) {
-        const status = error.code === 'SERVICE_FAILED' ? 502 : 400;
+        const status = error.code === 'SERVICE_FAILED' || error.code === 'REQUEST_FAILED' ? 502 : 400;
         return res.status(status).json({ error: error.code, message: error.message });
       }
       console.error('Failed to proxy guest service request:', error);
@@ -575,7 +588,7 @@ export const registerGuestRoutes = (app, {
     try {
       const result = await runGuestStorage(persistPath, req.params.id, parsed.data, async () => {
         const guest = await loadGuest(req.params.id);
-        if (!guest || guest.enabled === false || (!guest.entry && !guest.backgroundEntry)) throw new Error('Extension is unavailable.');
+        if (!guest || guest.enabled === false || (!guest.entry && !guest.backgroundEntry && !guest.statusEntry)) throw new Error('Extension is unavailable.');
         if (!requestedGuestCapabilities(guest).every((capability) => guest.capabilityGrants.includes(capability))) throw new Error('Extension needs approval.');
       });
       return res.json(result);
@@ -716,6 +729,7 @@ export const registerGuestRoutes = (app, {
       await setCapabilityGrants(guest.id, persistPath, granted, granted.length > 0 ? scope : null);
       if (granted.length === 0) {
         await stopGuestService(guest.id);
+        await onGuestDeactivated({ guestId: guest.id, guestName: guest.name });
       }
       // Credentials were stored for one API origin and one pair of OAuth
       // endpoints. When a newer version points the integration somewhere
@@ -745,6 +759,9 @@ export const registerGuestRoutes = (app, {
         return res.status(400).json({ error: 'invalid-request' });
       }
       await setGuestEnabled(guest.id, persistPath, parsed.data.enabled);
+      if (!parsed.data.enabled) {
+        await onGuestDeactivated({ guestId: guest.id, guestName: guest.name });
+      }
       const next = await loadGuest(guest.id);
       if (!next) {
         return res.status(404).json({ error: 'not-found' });
@@ -805,7 +822,7 @@ export const registerGuestRoutes = (app, {
         return res.status(404).end();
       }
       const served = await resolveGuestServedFile(guest.packageRoot, relativePath, {
-        hasRuntime: Boolean(guest.entry || guest.backgroundEntry),
+        hasRuntime: Boolean(guest.entry || guest.backgroundEntry || guest.statusEntry),
       });
       if (!served) {
         return res.status(404).end();

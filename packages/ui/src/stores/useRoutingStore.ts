@@ -14,6 +14,7 @@ import {
   saveRoutingToken,
   type RoutingConfig,
   type RoutingHeldPermission,
+  type RoutingJevSource,
   type RoutingState,
 } from '@/lib/routing/routingApi';
 
@@ -38,7 +39,7 @@ interface RoutingStoreState extends RoutingState {
   load: () => Promise<void>;
   resetForRuntime: () => void;
   applyState: (state: RoutingState) => void;
-  applyAvailability: (state: { available: boolean; autoReady: boolean; tokenPresent: boolean }) => void;
+  applyAvailability: (state: { available: boolean; autoReady: boolean; tokenPresent: boolean; jevSource: RoutingJevSource }) => void;
   recordDecision: (decision: RoutingDecision) => void;
   holdPermission: (held: RoutingHeldPermission) => void;
   releasePermission: (permissionId: string) => void;
@@ -84,8 +85,8 @@ export const useRoutingStore = create<RoutingStoreState>()((set, get) => ({
     set({ ...state, held: state.heldPermissions ? heldRecord(state.heldPermissions) : get().held, loaded: true, loadError: null });
   },
 
-  applyAvailability: ({ available, autoReady, tokenPresent }) => {
-    set({ available, autoReady, tokenPresent });
+  applyAvailability: ({ available, autoReady, tokenPresent, jevSource }) => {
+    set({ available, autoReady, tokenPresent, jevSource });
     // The config behind the change lives on the server; re-read rather than guess.
     if (available) void get().load();
   },

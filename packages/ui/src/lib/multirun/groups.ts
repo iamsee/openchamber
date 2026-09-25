@@ -1,4 +1,4 @@
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
 import type { WorktreeMetadata } from '@/types/worktree';
 import { normalizePath } from '@/lib/pathNormalization';
 import { getMultiRunIdentity } from './identity';

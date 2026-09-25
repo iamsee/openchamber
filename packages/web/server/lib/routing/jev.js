@@ -4,20 +4,30 @@
  */
 import { z } from 'zod';
 import {
-  JEV_API_ORIGIN,
-  JEV_API_PATH,
+  JEV_API_URL,
   JEV_MODEL,
   JEV_TIMEOUT_MS,
   ROUTING_INSTRUCTIONS,
   SAFETY_INSTRUCTIONS,
   SAFETY_KINDS,
+  ZEN_CLIENT_ID,
+  ZEN_JEV_API_URL,
+  ZEN_JEV_MODEL,
 } from './defaults.js';
+
+/**
+ * Where one request goes. A saved TypeSafe key wins: the user chose it and it
+ * carries their own quota. Without one, the same questions go to the free Jev
+ * model OpenCode Zen serves without a credential, identified as OpenChamber.
+ */
+export const jevEndpoint = (token) => (token
+  ? { url: JEV_API_URL, model: JEV_MODEL, headers: { authorization: `Bearer ${token}` }, source: 'typesafe' }
+  : { url: ZEN_JEV_API_URL, model: ZEN_JEV_MODEL, headers: { 'x-opencode-client': ZEN_CLIENT_ID }, source: 'zen-free' });
 
 export const buildRoutingRequest = ({ categories, history, request }) => {
   const criteria = {};
   for (const category of categories) criteria[category.id] = category.description;
   return {
-    model: JEV_MODEL,
     state: { history, request },
     questions: { category: { type: 'choice', instructions: ROUTING_INSTRUCTIONS, criteria } },
   };
@@ -25,7 +35,6 @@ export const buildRoutingRequest = ({ categories, history, request }) => {
 
 /** `permission` is what OpenCode reported: the tool kind, its patterns and its metadata. */
 export const buildPermissionRequest = (permission) => ({
-  model: JEV_MODEL,
   state: {
     permission: {
       type: permission.permission,
@@ -75,10 +84,11 @@ export const createJevClient = ({ fetchImpl = fetch, timeoutMs = JEV_TIMEOUT_MS 
     const timer = setTimeout(() => abort.abort(), timeoutMs);
     const started = Date.now();
     try {
-      const response = await fetchImpl(JEV_API_ORIGIN + JEV_API_PATH, {
+      const endpoint = jevEndpoint(token);
+      const response = await fetchImpl(endpoint.url, {
         method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(request),
+        headers: { ...endpoint.headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ ...request, model: endpoint.model }),
         signal: abort.signal,
       });
       const text = await response.text();

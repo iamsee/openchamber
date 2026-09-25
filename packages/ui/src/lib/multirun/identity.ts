@@ -1,5 +1,5 @@
-import type { Session } from '@opencode-ai/sdk/v2';
 import { z } from 'zod';
+import type { JsonValue, Metadata, Session } from '@/lib/opencode/model';
 import { normalizePath } from '@/lib/pathNormalization';
 import { parseMultiRunSessionTitle } from './title';
 
@@ -19,7 +19,10 @@ const membershipSchema = z.object({
   index: z.number().int().positive().safe().optional(),
   role: z.enum(['run', 'fusion']),
 }).refine((value) => value.group.kind !== 'legacy' || value.role === 'fusion');
-const openchamberSchema = z.looseObject({});
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema)]),
+);
+const openchamberSchema: z.ZodType<Metadata> = z.record(z.string(), jsonValueSchema);
 const membershipEnvelopeSchema = z.object({ multirun: membershipSchema });
 
 export type MultiRunMembership = z.infer<typeof membershipSchema>;
@@ -56,14 +59,46 @@ export function getMultiRunIdentity(session: Session, legacyDirectory = session.
   };
 }
 
-export function withMultiRunMembership(session: Pick<Session, 'metadata'>, membership: MultiRunMembership): NonNullable<Session['metadata']> {
+/**
+ * The marker as plain JSON. `Metadata` is `Record<string, JsonValue>` on v2, so
+ * the optional fields are written only when they carry a value rather than
+ * travelling as `undefined`.
+ */
+const membershipMetadata = (membership: MultiRunMembership): Metadata => {
+  const value = membershipSchema.parse(membership);
+  const marker: Metadata = {
+    version: value.version,
+    sessionID: value.sessionID,
+    group: value.group.kind === 'id'
+      ? { kind: value.group.kind, id: value.group.id }
+      : { kind: value.group.kind, scope: value.group.scope },
+    groupSlug: value.groupSlug,
+    providerID: value.providerID,
+    modelID: value.modelID,
+    role: value.role,
+  };
+  if (value.runGroup !== undefined) marker.runGroup = value.runGroup;
+  if (value.index !== undefined) marker.index = value.index;
+  return marker;
+};
+
+export function withMultiRunMembership(session: Pick<Session, 'metadata'>, membership: MultiRunMembership): Metadata {
   const parsed = openchamberSchema.safeParse(session.metadata?.openchamber);
   const openchamber = parsed.success ? parsed.data : {};
   return {
     ...session.metadata,
-    openchamber: { ...openchamber, multirun: membershipSchema.parse(membership) },
+    openchamber: { ...openchamber, multirun: membershipMetadata(membership) },
   };
 }
+
+/**
+ * The marker on its own, shaped as an RFC 7386 merge patch for
+ * `/api/openchamber/sessions/:id/metadata`. Nested keys merge, so writing the
+ * membership cannot erase what another feature stored under `openchamber`.
+ */
+export const multiRunMembershipPatch = (membership: MultiRunMembership): Metadata => ({
+  openchamber: { multirun: membershipMetadata(membership) },
+});
 
 export const isFusionSource = (anchor: MultiRunIdentity, candidate: MultiRunIdentity | null): boolean =>
   candidate !== null && candidate.role === 'run' && candidate.key === anchor.key

@@ -12,11 +12,10 @@ import type { LinearIssueListAssignee, LinearIssueListPriority, LinearIssueListS
 import type { ProjectRef } from '@/lib/projectContextApi';
 import { directoryMayHaveActiveProjectAction, useTerminalStore } from '@/stores/useTerminalStore';
 import { useFilesViewTabsStore } from './useFilesViewTabsStore';
-import { isWindowsArm64 } from '@/lib/platform';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { isContextPanelMode, type ContextPanelMode } from '@/lib/surfaces/modes';
 import { getRuntimeKey, isTransientRuntimeKey } from '@/lib/runtime-switch';
-import { sanitizeWorkStatusSectionOrder, type WorkStatusSectionId } from '@/components/chat/work-status/sections';
+import { sanitizeWorkStatusSectionOrder, type WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
 export type { ContextPanelMode };
@@ -832,7 +831,7 @@ interface UIStore {
    * Persisted to server settings, not just this browser.
    */
   workStatusHiddenSections: string[];
-  workStatusSectionOrder: WorkStatusSectionId[];
+  workStatusSectionOrder: WorkStatusPanelSectionId[];
   /** Explicitly chosen hidden-section state. False keeps the default opt-in seed. */
   workStatusHiddenSectionsExplicit: boolean;
   isSessionSwitcherOpen: boolean;
@@ -851,6 +850,7 @@ interface UIStore {
   isSessionCreateDialogOpen: boolean;
   isScheduledTasksDialogOpen: boolean;
   isArchivePageOpen: boolean;
+  isUsageStatsPageOpen: boolean;
   openGuestPageId: string | null;
   worktreesPageProjectId: string | null;
   isSettingsDialogOpen: boolean;
@@ -883,8 +883,6 @@ interface UIStore {
   chatRenderMode: ChatRenderMode;
   activityRenderMode: ActivityRenderMode;
   showDeletionDialog: boolean;
-  /** When true, confirm before applying deferred OpenCode restart from Settings. */
-  showOpenCodeRestartConfirm: boolean;
   autoDeleteEnabled: boolean;
   /** Global file-editor autosave. Default true for backward compatibility. */
   autoSaveEnabled: boolean;
@@ -919,6 +917,9 @@ interface UIStore {
   diffLayoutPreference: 'dynamic' | 'inline' | 'side-by-side';
   diffFileLayout: Record<string, 'inline' | 'side-by-side'>;
   diffWrapLines: boolean;
+  diffFileListMode: 'flat' | 'tree';
+  /** Width of the diff view's file tree column, in pixels. */
+  diffFileTreeWidth: number;
   /** Width of the walkthrough table of contents, in pixels. */
   walkthroughTocWidth: number;
   gitChangesViewMode: 'flat' | 'tree';
@@ -974,7 +975,10 @@ interface UIStore {
   showOpenCodeUpdateNotifications: boolean;
   agentControlToolEnabled: boolean;
   agentWebToolEnabled: boolean;
+  /** Who answers the agent's browser actions: `builtin` (the in-app view) or an extension id. */
+  browserProvider: string;
   agentMemoryToolEnabled: boolean;
+  agentNotifyToolEnabled: boolean;
   /**
    * Whether this build has agent memory at all. Server-owned and not
    * persisted: an unreleased feature must not come back from a stale cache.
@@ -1037,6 +1041,8 @@ interface UIStore {
   openContextPreview: (directory: string, url: string) => void;
   openContextBrowser: (directory: string, url?: string, options?: { reveal?: boolean }) => void;
   openNewContextBrowserTab: (directory: string) => void;
+  /** A new background browser tab for an agent at `url`; returns its tab id, or null where there is no browser. */
+  openAgentBrowserTab: (directory: string, url: string) => string | null;
   setContextPanelTabTargetPath: (directory: string, tabID: string, targetPath: string) => void;
   setActiveContextPanelTab: (directory: string, tabID: string) => void;
   reorderContextPanelTabs: (directory: string, activeTabID: string, overTabID: string) => void;
@@ -1076,9 +1082,10 @@ interface UIStore {
   setSessionCreateDialogOpen: (open: boolean) => void;
   setScheduledTasksDialogOpen: (open: boolean) => void;
   setArchivePageOpen: (open: boolean) => void;
+  setUsageStatsPageOpen: (open: boolean) => void;
   setOpenGuestPage: (id: string | null) => void;
   setWorktreesPageProjectId: (projectId: string | null) => void;
-  /** Close every full-page surface (Scheduled, Archive, Worktrees, Multi-run). */
+  /** Close every full-page surface (Scheduled, Archive, Usage, Worktrees, Multi-run). */
   closeMainSurfaces: () => void;
   setSettingsDialogOpen: (open: boolean) => void;
   setNewWorktreeDialogOpen: (open: boolean) => void;
@@ -1101,7 +1108,6 @@ interface UIStore {
   setChatRenderMode: (value: ChatRenderMode) => void;
   setActivityRenderMode: (value: ActivityRenderMode) => void;
   setShowDeletionDialog: (value: boolean) => void;
-  setShowOpenCodeRestartConfirm: (value: boolean) => void;
   setAutoDeleteEnabled: (value: boolean) => void;
   setAutoSaveEnabled: (value: boolean) => void;
   setAutoDeleteAfterDays: (days: number) => void;
@@ -1145,6 +1151,8 @@ interface UIStore {
   setDiffLayoutPreference: (mode: 'dynamic' | 'inline' | 'side-by-side') => void;
   setDiffFileLayout: (filePath: string, mode: 'inline' | 'side-by-side') => void;
   setDiffWrapLines: (wrap: boolean) => void;
+  setDiffFileListMode: (mode: 'flat' | 'tree') => void;
+  setDiffFileTreeWidth: (width: number) => void;
   setWalkthroughTocWidth: (width: number) => void;
   setGitChangesViewMode: (mode: 'flat' | 'tree') => void;
   setToolJsonViewMode: (mode: 'summary' | 'formatted' | 'raw') => void;
@@ -1182,7 +1190,9 @@ interface UIStore {
   setShowOpenCodeUpdateNotifications: (value: boolean) => void;
   setAgentControlToolEnabled: (value: boolean) => void;
   setAgentWebToolEnabled: (value: boolean) => void;
+  setBrowserProvider: (value: string) => void;
   setAgentMemoryToolEnabled: (value: boolean) => void;
+  setAgentNotifyToolEnabled: (value: boolean) => void;
   setAgentMemoryFeatureAvailable: (value: boolean) => void;
   setRoutingFeatureAvailable: (value: boolean) => void;
   markAgentMemoryViewed: (key: string, viewedAt: number) => void;
@@ -1266,6 +1276,7 @@ export const useUIStore = create<UIStore>()(
         isSessionCreateDialogOpen: false,
         isScheduledTasksDialogOpen: false,
         isArchivePageOpen: false,
+        isUsageStatsPageOpen: false,
         openGuestPageId: null,
         worktreesPageProjectId: null,
         isSettingsDialogOpen: false,
@@ -1290,7 +1301,6 @@ export const useUIStore = create<UIStore>()(
         chatRenderMode: 'live',
         activityRenderMode: 'summary',
         showDeletionDialog: true,
-        showOpenCodeRestartConfirm: true,
         autoDeleteEnabled: false,
         autoSaveEnabled: true,
         autoDeleteAfterDays: 30,
@@ -1320,6 +1330,8 @@ export const useUIStore = create<UIStore>()(
         diffLayoutPreference: 'inline',
         diffFileLayout: {},
         diffWrapLines: false,
+        diffFileListMode: 'flat',
+        diffFileTreeWidth: 240,
         walkthroughTocWidth: 224,
         gitChangesViewMode: 'flat',
         toolJsonViewMode: 'summary',
@@ -1358,10 +1370,12 @@ export const useUIStore = create<UIStore>()(
         showTerminalQuickKeysOnDesktop: false,
         sessionTabsEnabled: false,
         persistChatDraft: true,
-        showOpenCodeUpdateNotifications: !isWindowsArm64(),
+        showOpenCodeUpdateNotifications: true,
         agentControlToolEnabled: true,
         agentWebToolEnabled: true,
+        browserProvider: 'builtin',
         agentMemoryToolEnabled: false,
+        agentNotifyToolEnabled: false,
         agentMemoryFeatureAvailable: false,
         routingFeatureAvailable: false,
         agentMemoryViewedAt: {},
@@ -1602,6 +1616,22 @@ export const useUIStore = create<UIStore>()(
             dedupeKey: normalizedUrl,
             label: null,
           });
+        },
+        // An agent's page gets its own tab in the background: never the tab
+        // the user is on, never an existing tab that happens to show the same
+        // address, and the panel stays as the user left it.
+        openAgentBrowserTab: (directory, url) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory || isVSCodeRuntime()) return null;
+          browserTabSequence += 1;
+          const dedupeKey = `browser:agent:${Date.now()}-${browserTabSequence}`;
+          get().openContextPanelTab(normalizedDirectory, {
+            mode: 'browser',
+            targetPath: url.trim(),
+            dedupeKey,
+            label: null,
+          }, { reveal: false });
+          return buildContextPanelTabID('browser', dedupeKey);
         },
         // Always a new tab, never the existing one: the whole point of asking
         // for one is to keep what is already open.
@@ -2006,35 +2036,42 @@ export const useUIStore = create<UIStore>()(
 
         setScheduledTasksDialogOpen: (open) => {
           set(open
-            ? { isScheduledTasksDialogOpen: true, isArchivePageOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false, openGuestPageId: null }
+            ? { isScheduledTasksDialogOpen: true, isArchivePageOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false, openGuestPageId: null }
             : { isScheduledTasksDialogOpen: false });
         },
 
         setArchivePageOpen: (open) => {
           set(open
-            ? { isArchivePageOpen: true, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false, openGuestPageId: null }
+            ? { isArchivePageOpen: true, isUsageStatsPageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false, openGuestPageId: null }
             : { isArchivePageOpen: false });
+        },
+
+        setUsageStatsPageOpen: (open) => {
+          set(open
+            ? { isUsageStatsPageOpen: true, isArchivePageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false, openGuestPageId: null }
+            : { isUsageStatsPageOpen: false });
         },
 
         setWorktreesPageProjectId: (projectId) => {
           set(projectId
-            ? { worktreesPageProjectId: projectId, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isMultiRunLauncherOpen: false, openGuestPageId: null }
+            ? { worktreesPageProjectId: projectId, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, isMultiRunLauncherOpen: false, openGuestPageId: null }
             : { worktreesPageProjectId: null });
         },
 
         setOpenGuestPage: (id) => {
-          set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false }
+          set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, isMultiRunLauncherOpen: false }
             : { openGuestPageId: null });
         },
 
         closeMainSurfaces: () => {
           const state = get();
-          if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.worktreesPageProjectId && !state.isMultiRunLauncherOpen && !state.openGuestPageId) {
+          if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.isUsageStatsPageOpen && !state.worktreesPageProjectId && !state.isMultiRunLauncherOpen && !state.openGuestPageId) {
             return;
           }
           set({
             isScheduledTasksDialogOpen: false,
             isArchivePageOpen: false,
+            isUsageStatsPageOpen: false,
             worktreesPageProjectId: null,
             isMultiRunLauncherOpen: false,
             multiRunLauncherPrefillPrompt: '',
@@ -2132,10 +2169,6 @@ export const useUIStore = create<UIStore>()(
 
         setShowDeletionDialog: (value) => {
           set({ showDeletionDialog: value });
-        },
-
-        setShowOpenCodeRestartConfirm: (value) => {
-          set({ showOpenCodeRestartConfirm: value });
         },
 
         setAutoDeleteEnabled: (value) => {
@@ -2292,6 +2325,14 @@ export const useUIStore = create<UIStore>()(
               [filePath]: mode,
             },
           }));
+        },
+
+        setDiffFileListMode: (mode) => {
+          set({ diffFileListMode: mode });
+        },
+
+        setDiffFileTreeWidth: (width) => {
+          set({ diffFileTreeWidth: Math.round(width) });
         },
 
         setDiffWrapLines: (wrap) => {
@@ -2587,7 +2628,7 @@ export const useUIStore = create<UIStore>()(
           set((state) => ({
             isMultiRunLauncherOpen: open,
             multiRunLauncherPrefillPrompt: open ? state.multiRunLauncherPrefillPrompt : '',
-            ...(open ? { isScheduledTasksDialogOpen: false, isArchivePageOpen: false, worktreesPageProjectId: null, openGuestPageId: null } : {}),
+            ...(open ? { isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, openGuestPageId: null } : {}),
           }));
         },
 
@@ -2599,6 +2640,7 @@ export const useUIStore = create<UIStore>()(
             isSessionSwitcherOpen: false,
             isScheduledTasksDialogOpen: false,
             isArchivePageOpen: false,
+            isUsageStatsPageOpen: false,
             worktreesPageProjectId: null,
           });
         },
@@ -2611,6 +2653,7 @@ export const useUIStore = create<UIStore>()(
             isSessionSwitcherOpen: false,
             isScheduledTasksDialogOpen: false,
             isArchivePageOpen: false,
+            isUsageStatsPageOpen: false,
             worktreesPageProjectId: null,
           });
         },
@@ -2684,8 +2727,14 @@ export const useUIStore = create<UIStore>()(
         setAgentWebToolEnabled: (value) => {
           set({ agentWebToolEnabled: value });
         },
+        setBrowserProvider: (value) => {
+          set({ browserProvider: value });
+        },
         setAgentMemoryToolEnabled: (value) => {
           set({ agentMemoryToolEnabled: value });
+        },
+        setAgentNotifyToolEnabled: (value) => {
+          set({ agentNotifyToolEnabled: value });
         },
         setAgentMemoryFeatureAvailable: (value) => {
           set({ agentMemoryFeatureAvailable: value });
@@ -3103,7 +3152,6 @@ export const useUIStore = create<UIStore>()(
           chatRenderMode: state.chatRenderMode,
           activityRenderMode: state.activityRenderMode,
           showDeletionDialog: state.showDeletionDialog,
-          showOpenCodeRestartConfirm: state.showOpenCodeRestartConfirm,
           autoDeleteEnabled: state.autoDeleteEnabled,
           autoSaveEnabled: state.autoSaveEnabled,
           autoDeleteAfterDays: state.autoDeleteAfterDays,
@@ -3130,6 +3178,8 @@ export const useUIStore = create<UIStore>()(
           recentEfforts: state.recentEfforts,
           diffLayoutPreference: state.diffLayoutPreference,
           diffWrapLines: state.diffWrapLines,
+          diffFileListMode: state.diffFileListMode,
+          diffFileTreeWidth: state.diffFileTreeWidth,
           walkthroughTocWidth: state.walkthroughTocWidth,
           gitChangesViewMode: state.gitChangesViewMode,
           toolJsonViewMode: state.toolJsonViewMode,
@@ -3156,7 +3206,9 @@ export const useUIStore = create<UIStore>()(
           showOpenCodeUpdateNotifications: state.showOpenCodeUpdateNotifications,
           agentControlToolEnabled: state.agentControlToolEnabled,
           agentWebToolEnabled: state.agentWebToolEnabled,
+          browserProvider: state.browserProvider,
           agentMemoryToolEnabled: state.agentMemoryToolEnabled,
+          agentNotifyToolEnabled: state.agentNotifyToolEnabled,
           agentMemoryViewedAt: state.agentMemoryViewedAt,
           projectContextSidebarWidth: state.projectContextSidebarWidth,
           inputSpellcheckEnabled: state.inputSpellcheckEnabled,

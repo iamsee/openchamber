@@ -90,15 +90,17 @@ button,
   color: var(--interactive-selection-foreground);
 }
 
-/* Quoted chat fragment kept visibly highlighted while its comment input is
-   open (the native selection collapses once the input takes focus). The
-   rectangles come from the selection's own client rects and paint in the
-   selection colour, so shape and shade both match the native selection that
-   was just showing; the colour is translucent because these rectangles sit
-   above the text. */
+/* These rectangles sit above glyphs, so the fill must remain translucent. */
 .oc-chat-comment-rect {
-  /* Rectangles paint above glyphs, unlike native selection. */
   background-color: color-mix(in srgb, var(--interactive-selection) 35%, transparent);
+}
+
+/* Chat quotes waiting in the composer stay marked in their message, tinted
+   like a text selection. The hovered or just-revealed one is painted in both
+   layers, so the translucent fills stack into a stronger mark. */
+::highlight(oc-chat-quote),
+::highlight(oc-chat-quote-focus) {
+  background-color: var(--oc-text-selection);
 }
 
 .pierre-diff-wrapper {
@@ -431,8 +433,8 @@ button svg,
  * value only WebKit parses, which keeps the rule where it was written for.
  */
 @supports (font: -apple-system-body) {
-  button svg:not(.animate-spin),
-  [role="button"] svg:not(.animate-spin) {
+  button svg:not(.animate-spin):not(.activity-spinner),
+  [role="button"] svg:not(.animate-spin):not(.activity-spinner) {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
@@ -507,6 +509,12 @@ svg.animate-spin {
 
 .app-region-drag {
   -webkit-app-region: drag;
+}
+
+/* Native drag regions still intercept pointer input beneath portal dialogs.
+   Restore them when the last dialog closes. */
+.oc-dialog-open .app-region-drag {
+  -webkit-app-region: no-drag;
 }
 
 .app-region-no-drag {
@@ -641,12 +649,6 @@ html:not(.dark) .chat-scroll {
   scrollbar-gutter: unset !important;
 }
 
-/* Extensions can cross the overflow threshold as cards expand or the catalog loads. */
-.overlay-scrollbar-target:has(> .extensions-settings-page),
-.extensions-settings-page > .overlay-scrollbar-target {
-  scrollbar-gutter: stable !important;
-}
-
 .overlay-scrollbar-target::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
@@ -677,6 +679,13 @@ html:not(.dark) .chat-scroll {
    Follow overflow, not hover visibility, so showing the thumb never shifts text.
    Direct-child matching prevents nested scrollers from reserving space twice. */
 .overlay-scrollbar-wrapper:has(> .overlay-scrollbar > .overlay-scrollbar__thumb--vertical:not([hidden])) {
+  padding-right: 6px;
+}
+
+/* Settings pages cross the overflow threshold all the time (collapsible
+   sections, catalogs loading), so they reserve the thumb's space up front
+   instead of shifting content the moment a scrollbar appears. */
+.overlay-scrollbar-wrapper--stable-gutter {
   padding-right: 6px;
 }
 
@@ -1094,15 +1103,15 @@ html:not(.dark) .chat-scroll {
   font-size: var(--text-code) !important;
 }
 
-.question-markdown > .markdown-content.markdown-tool {
+.form-markdown > .markdown-content.markdown-tool {
   font-size: inherit !important;
 }
 
-.question-markdown > .markdown-content > [data-md-block]:first-child > :first-child {
+.form-markdown > .markdown-content > [data-md-block]:first-child > :first-child {
   margin-top: 0;
 }
 
-.question-markdown > .markdown-content > [data-md-block]:last-child > :last-child {
+.form-markdown > .markdown-content > [data-md-block]:last-child > :last-child {
   margin-bottom: 0;
 }
 
@@ -1809,6 +1818,21 @@ textarea[data-terminal-hidden-input="true"]::placeholder {
 
 .animate-status-logo {
   animation: oc-status-logo 4s steps(10, jump-none) infinite;
+}
+
+@keyframes activity-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Running-session spinner (opt-in). steps() limits rotation changes to 20 per
+   second. This still adds compositor work while a running indicator is visible.
+   Technique from VS Code's codicon-modifier-spin. */
+.activity-spinner {
+  animation: activity-spin 1.5s steps(30) infinite;
+  transform-box: fill-box;
+  transform-origin: center center;
 }
 
 @keyframes navrail-dot-wave {

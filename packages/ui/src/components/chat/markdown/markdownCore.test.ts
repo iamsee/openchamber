@@ -106,15 +106,20 @@ describe('markdown sanitization', () => {
 });
 
 describe('Markdown parser failures', () => {
-  // Real parser recursion overflow, rather than a mocked parse failure.
-  const source = `${'> '.repeat(20000)}<img src=x onerror="alert(1)"> & text\n  **unfinished`;
+  // Real parser recursion overflow, rather than a mocked parse failure. Each
+  // quote level re-lexes the rest of the line, so the cost grows with the square
+  // of the depth an overflow needs. Bun on Windows allows a stack several times
+  // deeper than on Linux, where one parse then takes seconds, so these tests get
+  // their own timeout. A bare `>` nests the same way at half the length.
+  const PARSER_OVERFLOW_TIMEOUT_MS = 60_000;
+  const source = `${'>'.repeat(20000)}<img src=x onerror="alert(1)"> & text\n  **unfinished`;
   const fallback = `<div class="whitespace-pre-wrap break-words">${escapeRawMarkdownHtml(source)}</div>`;
 
   test('preserves source as inert text on first paint in both image modes', () => {
     expect(renderMarkdownSync(source, 'inline')).toBe(fallback);
     expect(renderMarkdownSync(source, 'label')).toBe(fallback);
     expect(renderMarkdownSync('**healthy**')).toContain('<strong>healthy</strong>');
-  });
+  }, PARSER_OVERFLOW_TIMEOUT_MS);
 
   test('keeps streaming and settled rendering readable and caches the settled fallback', async () => {
     resetMarkdownHtmlCacheForTests();
@@ -126,7 +131,7 @@ describe('Markdown parser failures', () => {
     expect(getCachedMarkdownBlocks(source)?.[0]?.html).toBe(fallback);
     const healthy = await renderMarkdownBlocks('**still healthy**', false);
     expect(healthy[0]?.html).toContain('<strong>still healthy</strong>');
-  });
+  }, PARSER_OVERFLOW_TIMEOUT_MS);
 
   test('keeps images from other messages when one message cannot be scanned', () => {
     expect(extractMarkdownImageCandidates([
@@ -137,7 +142,7 @@ describe('Markdown parser failures', () => {
       { source: 'https://example.test/before.png', filename: 'before.png' },
       { source: 'https://example.test/after.png', filename: 'after.png' },
     ]);
-  });
+  }, PARSER_OVERFLOW_TIMEOUT_MS);
 });
 
 describe('Markdown disclosures', () => {

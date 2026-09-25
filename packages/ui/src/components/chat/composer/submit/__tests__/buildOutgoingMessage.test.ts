@@ -32,7 +32,6 @@ const deps = (overrides: Partial<OutgoingMessageDeps> = {}): OutgoingMessageDeps
     },
     sanitizeAttachments: (files) => [...(files ?? [])],
     collectSkillNames: (text) => [...text.matchAll(/\/(\w+)/g)].map((m) => m[1]),
-    buildSkillInstruction: (names) => (names.length ? `use: ${names.join(',')}` : null),
     ...overrides,
 });
 
@@ -319,21 +318,27 @@ describe('synthetic context', () => {
             .toEqual(['conflict note', 'issue body']);
     });
 
-    test('skills named inline are collected into a trailing instruction', () => {
+    // Skills are attached to the prompt by the send, not written into it.
+    test('skills named inline are reported, not turned into a part', () => {
         const result = buildOutgoingMessage(input({ composerText: 'use /deploy now' }), deps());
-        expect(result.additionalParts.at(-1)).toEqual({ text: 'use: deploy', synthetic: true });
+        expect(result.skillNames).toEqual(['deploy']);
+        expect(result.additionalParts).toEqual([]);
     });
 
-    test('skills named in the composer are collected without duplicates', () => {
+    test('skills named in the composer are collected in order without duplicates', () => {
         const result = buildOutgoingMessage(input({
             composerText: '/deploy and /audit and /deploy',
         }), deps());
-        expect(result.additionalParts.at(-1)?.text).toBe('use: deploy,audit');
+        expect(result.skillNames).toEqual(['deploy', 'audit']);
     });
 
-    test('no skills means no instruction', () => {
-        const result = buildOutgoingMessage(input({ composerText: 'plain text' }), deps());
-        expect(result.additionalParts).toEqual([]);
+    test('queued text is not scanned again: its instruction was captured when it was queued', () => {
+        const result = buildOutgoingMessage(input({
+            queued: [{ text: '/deploy', context: [{ kind: 'instruction', text: 'use: deploy' }] }],
+            composerText: null,
+        }), deps());
+        expect(result.skillNames).toEqual([]);
+        expect(result.additionalParts).toEqual([{ text: 'use: deploy', synthetic: true }]);
     });
 
     test('context alone is still worth sending', () => {
@@ -353,7 +358,7 @@ describe('synthetic context', () => {
 });
 
 describe('full assembly order', () => {
-    test('queued, then typed, then synthetic, then references, then skills', () => {
+    test('queued, then typed, then synthetic, then references', () => {
         const result = buildOutgoingMessage(input({
             queued: [{ text: 'q1' }, { text: 'q2' }],
             composerText: 'typed /deploy',
@@ -372,8 +377,8 @@ describe('full assembly order', () => {
             'pr-how',
             'pr-diff',
             'linear',
-            'use: deploy',
         ]);
+        expect(result.skillNames).toEqual(['deploy']);
     });
 });
 
@@ -421,8 +426,11 @@ describe('capturing composer context for the queue', () => {
             syntheticTexts: ['conflict note'],
             linkedPr: { number: 7, title: 'PR', url: 'https://x/pr/7', instructions: 'pr-how', context: 'pr-diff' },
         });
+        // The skill instruction is the one intended difference: a direct send
+        // attaches the skill to the prompt, a queued one carries the instruction.
         const captured: QueuedContextPart[] = buildComposerContext(input, 'use: deploy');
         const direct = buildOutgoingMessage({ ...input, queued: [], composerText: 'use /deploy', composerAttachments: [] }, deps());
-        expect(queuedContextToParts(captured)).toEqual(direct.additionalParts);
+        expect(queuedContextToParts(captured)).toEqual([...direct.additionalParts, { text: 'use: deploy', synthetic: true }]);
+        expect(direct.skillNames).toEqual(['deploy']);
     });
 });

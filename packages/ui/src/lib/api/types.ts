@@ -803,11 +803,6 @@ interface DiagnosticsAPI {
   downloadLogs(): Promise<{ fileName: string; content: string }>;
 }
 
-export interface ToolsAPI {
-
-  getAvailableTools(): Promise<string[]>;
-}
-
 export interface EditorAPI {
   openFile(path: string, line?: number, column?: number): Promise<void>;
   openDiff(
@@ -1488,7 +1483,6 @@ export interface RuntimeAPIs {
   push?: PushAPI;
   diagnostics?: DiagnosticsAPI;
   clientAuth?: ClientAuthAPI;
-  tools: ToolsAPI;
   editor?: EditorAPI;
   vscode?: VSCodeAPI;
   worktrees?: WorktreeMetadata[];
@@ -1594,8 +1588,6 @@ export interface SkillsInstallResponse {
   skipped?: Array<{ skillName: string; reason: string }>;
   error?: SkillsInstallError;
   requiresReload?: boolean;
-  requiresRestart?: boolean;
-  restartDeferred?: boolean;
   requiresManualRestart?: boolean;
   reloadFailed?: boolean;
   warning?: string;

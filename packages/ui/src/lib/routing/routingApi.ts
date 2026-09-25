@@ -34,10 +34,14 @@ const heldPermissionSchema = z.object({ permissionId: z.string(), score: z.numbe
 
 const builtinCategorySchema = z.object({ id: z.string().min(1), name: z.string().min(1), description: z.string().min(1) });
 
+/** Which Jev endpoint the server is calling: the user's TypeSafe key, or the free model zen serves. */
+const jevSourceSchema = z.enum(['typesafe', 'zen-free']);
+
 const stateSchema = z.object({
   available: z.boolean(),
   autoReady: z.boolean(),
   tokenPresent: z.boolean(),
+  jevSource: jevSourceSchema,
   config: routingConfigSchema.nullable(),
   builtins: z.array(builtinCategorySchema),
   heldPermissions: z.array(heldPermissionSchema).optional(),
@@ -46,9 +50,10 @@ const stateSchema = z.object({
 export type RoutingCategory = z.infer<typeof routingCategorySchema>;
 export type RoutingConfig = z.infer<typeof routingConfigSchema>;
 export type RoutingHeldPermission = z.infer<typeof heldPermissionSchema>;
+export type RoutingJevSource = z.infer<typeof jevSourceSchema>;
 export type RoutingState = z.infer<typeof stateSchema>;
 
-export const ROUTING_UNAVAILABLE: RoutingState = { available: false, autoReady: false, tokenPresent: false, config: null, builtins: [], heldPermissions: [] };
+export const ROUTING_UNAVAILABLE: RoutingState = { available: false, autoReady: false, tokenPresent: false, jevSource: 'zen-free', config: null, builtins: [], heldPermissions: [] };
 
 const errorPayloadSchema = z.object({ error: z.string().min(1) });
 

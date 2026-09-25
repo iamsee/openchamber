@@ -1,11 +1,33 @@
-import { expect, test } from 'bun:test';
-import { createOpencodeClient, type Session } from '@opencode-ai/sdk/v2';
-import { loadFusionOutputs, type FusionSource } from './fusion';
+import { expect, mock, test } from 'bun:test';
+import type { Session } from '@/lib/opencode/model';
 import { getMultiRunIdentity, withMultiRunMembership } from './identity';
 
+const calls: string[] = [];
+let getSessionImpl: (id: string, directory?: string | null) => Promise<Session>;
+let getSessionMessagesImpl: (id: string, options?: { limit?: number }, directory?: string | null) => Promise<{
+  items: Array<{ info: { role: string }; parts: Array<{ type: string; text: string }> }>;
+}>;
+
+mock.module('@/lib/opencode/client', () => ({
+  opencodeClient: {
+    getSession: (id: string, directory?: string | null) => {
+      calls.push(`session:${id}:${directory}`);
+      return getSessionImpl(id, directory);
+    },
+    getSessionMessages: (id: string, options?: { limit?: number }, directory?: string | null) => {
+      calls.push(`messages:${id}:${directory}`);
+      return getSessionMessagesImpl(id, options, directory);
+    },
+  },
+}));
+
+const { loadFusionOutputs } = await import('./fusion');
+type FusionSource = Parameters<typeof loadFusionOutputs>[0][number];
+
 const session: Session = {
-  id: 'run', slug: 'run', directory: '/repo', projectID: 'project', version: '1',
-  title: 'renamed freely', time: { created: 1, updated: 1 },
+  id: 'run', directory: '/repo', projectID: 'project', title: 'renamed freely',
+  cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+  time: { created: 1, updated: 1 },
   metadata: withMultiRunMembership({}, {
     version: 1, sessionID: 'run', group: { kind: 'id', id: '9f512893-6e63-4e49-a534-5de733ca103e' },
     groupSlug: 'bench', role: 'run', providerID: 'openrouter', modelID: 'vendor/model',
@@ -15,53 +37,48 @@ const identity = getMultiRunIdentity(session);
 if (!identity) throw new Error('Fixture must have membership');
 const source: FusionSource = { session, identity, directory: '/repo', projectDirectory: '/repo' };
 
+const reset = () => {
+  calls.length = 0;
+  getSessionImpl = async () => session;
+  getSessionMessagesImpl = async () => ({ items: [] });
+};
+
 test('fusion loads the selected session by ID and uses its current last assistant output', async () => {
-  const paths: string[] = [];
-  const client = createOpencodeClient({ baseUrl: 'http://fusion.test', fetch: async (request) => {
-    const url = new URL(new Request(request).url);
-    paths.push(url.pathname);
-    expect(url.searchParams.get('directory')).toBe('/repo');
-    if (!url.pathname.endsWith('/message')) return Response.json({ ...session, title: 'renamed again' });
-    return Response.json([
-      { info: { role: 'assistant' }, parts: [{ type: 'text', text: 'older' }] },
-      { info: { role: 'user' }, parts: [{ type: 'text', text: 'question' }] },
+  reset();
+  getSessionImpl = async () => ({ ...session, title: 'renamed again' });
+  // v2 pages messages newest first.
+  getSessionMessagesImpl = async () => ({
+    items: [
       { info: { role: 'assistant' }, parts: [{ type: 'text', text: 'latest result' }] },
-    ]);
-  } });
-  const result = await loadFusionOutputs(client, [source], source.identity, () => {});
+      { info: { role: 'user' }, parts: [{ type: 'text', text: 'question' }] },
+      { info: { role: 'assistant' }, parts: [{ type: 'text', text: 'older' }] },
+    ],
+  });
+  const result = await loadFusionOutputs([source], source.identity, () => {});
   expect(result.map((item) => item.text)).toEqual(['latest result']);
   expect(result[0].source.session.title).toBe('renamed again');
-  expect(paths).toEqual(['/session/run', '/session/run/message']);
+  expect(calls).toEqual(['session:run:/repo', 'messages:run:/repo']);
 });
 
 test('fusion stops before fetching output when a selected ID no longer owns membership', async () => {
-  const paths: string[] = [];
-  const client = createOpencodeClient({ baseUrl: 'http://fusion.test', fetch: async (request) => {
-    paths.push(new URL(new Request(request).url).pathname);
-    return Response.json({ ...session, id: 'fork' });
-  } });
-  await expect(loadFusionOutputs(client, [source], source.identity, () => {})).rejects.toThrow('membership changed');
-  expect(paths).toEqual(['/session/run']);
+  reset();
+  getSessionImpl = async () => ({ ...session, id: 'fork' });
+  await expect(loadFusionOutputs([source], source.identity, () => {})).rejects.toThrow('membership changed');
+  expect(calls).toEqual(['session:run:/repo']);
 });
 
 test('fusion read failure is not silently treated as an empty source', async () => {
-  const client = createOpencodeClient({ baseUrl: 'http://fusion.test', fetch: async (request) => {
-    if (new URL(new Request(request).url).pathname.endsWith('/message')) return Response.json({ message: 'unavailable' }, { status: 503 });
-    return Response.json(session);
-  } });
-  await expect(loadFusionOutputs(client, [source], source.identity, () => {})).rejects.toThrow();
+  reset();
+  getSessionMessagesImpl = async () => { throw new Error('unavailable'); };
+  await expect(loadFusionOutputs([source], source.identity, () => {})).rejects.toThrow('unavailable');
 });
 
 test('a runtime switch during source lookup stops the next request', async () => {
+  reset();
   let switched = false;
-  let requests = 0;
-  const client = createOpencodeClient({ baseUrl: 'http://fusion.test', fetch: async () => {
-    requests += 1;
-    switched = true;
-    return Response.json(session);
-  } });
-  await expect(loadFusionOutputs(client, [source], source.identity, () => {
+  getSessionImpl = async () => { switched = true; return session; };
+  await expect(loadFusionOutputs([source], source.identity, () => {
     if (switched) throw new Error('Runtime changed');
   })).rejects.toThrow('Runtime changed');
-  expect(requests).toBe(1);
+  expect(calls).toEqual(['session:run:/repo']);
 });

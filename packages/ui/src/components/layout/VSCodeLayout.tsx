@@ -42,7 +42,7 @@ import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { updateDesktopSettings } from '@/lib/persistence';
 import { formatTimeForPreference } from '@/lib/timeFormat';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
 import type { UsageWindow } from '@/types';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';

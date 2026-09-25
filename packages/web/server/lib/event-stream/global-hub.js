@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createUpstreamSseReader } from './upstream-reader.js';
 import { serializeMessageStreamWsEvent } from './protocol.js';
+import { translateWireEvent } from './translate-v2.js';
 import { createDeltaCoalescer, DELTA_COALESCE_WINDOW_MS } from './delta-coalescer.js';
 
 // Raised from 512 → 2048 to improve recovery after brief disconnects during
@@ -69,6 +70,7 @@ export function createGlobalMessageStreamHub({
       ? envelope.eventId
       : `${replayIdPrefix}${String(++replaySequence).padStart(12, '0')}`;
     let serializedFrame;
+    let translated;
     return {
       envelope,
       payload,
@@ -77,6 +79,13 @@ export function createGlobalMessageStreamHub({
       serialize() {
         serializedFrame ??= serializeMessageStreamWsEvent(payload, { directory, eventId });
         return serializedFrame;
+      },
+      // Browser clients receive the raw wire payload and translate it
+      // themselves; server-side subscribers read this instead. Translating
+      // lazily keeps the cost off the WS fan-out path when nothing listens.
+      translated() {
+        translated ??= translateWireEvent(payload);
+        return translated;
       },
     };
   };
@@ -123,7 +132,7 @@ export function createGlobalMessageStreamHub({
       buildUrl: () => {
         buildUrlFailed = false;
         try {
-          return new URL(buildOpenCodeUrl('/global/event', ''));
+          return new URL(buildOpenCodeUrl('/api/event', ''));
         } catch {
           buildUrlFailed = true;
           throw new Error('OpenCode service unavailable');

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test"
 import { togglePermissionAutoAccept } from "../../components/chat/permissionAutoAccept"
 
 const storage = new Map<string, string>()
-const createSessionCalls: Array<{ title?: string; directory: string | null; parentID: string | null; metadata?: unknown }> = []
+const createSessionCalls: Array<{ title?: string; directory: string | null; metadata?: unknown }> = []
 const permissionAutoAcceptCalls: Array<[string, boolean]> = []
 const savedVariantCalls: Array<string | undefined> = []
 const savedAgentModelCalls: Array<[string, string, string, string]> = []
@@ -320,11 +320,10 @@ mock.module("../session-actions", () => ({
   createSession: mock(async (
     title: string | undefined,
     directory: string | null,
-    parentID: string | null,
     metadata?: unknown,
     selectionTransition?: "submitted-draft",
   ) => {
-    createSessionCalls.push({ title, directory, parentID, metadata })
+    createSessionCalls.push({ title, directory, metadata })
     const session = { id: "ses_issue_2039", directory: createdSessionDirectory ?? directory }
     const sessionDirectory = session.directory ?? null
     if (sessionDirectory) {
@@ -335,6 +334,7 @@ mock.module("../session-actions", () => ({
     store.getState().markSessionAsOpenChamberCreated(session.id)
     return session
   }),
+  forkAfterMessage: mock(async () => undefined),
   deleteSession: mock(async () => true),
   deleteSessions: mock(async () => ({ deletedIds: [], failedIds: [] })),
   archiveSession: mock(async () => true),
@@ -804,11 +804,11 @@ describe("assistant answer worktree routing", () => {
         createdDirectory = directory
         return {
           id: "created-session",
-          slug: "created-session",
           projectID: "project",
           directory: directory ?? "",
           title: "Created session",
-          version: "1",
+          cost: 0,
+          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
           time: { created: 1, updated: 1 },
         }
       },

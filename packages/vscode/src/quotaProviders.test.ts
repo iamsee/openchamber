@@ -7,6 +7,11 @@ import path from 'node:path';
 const previousQuotaDataDirectory = process.env.OPENCHAMBER_DATA_DIR;
 const temporaryQuotaDataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-quota-'));
 process.env.OPENCHAMBER_DATA_DIR = temporaryQuotaDataDirectory;
+// OpenCode 2.x answers credentials from its database first. Point the reader
+// at a database that does not exist so the stubbed auth.json below is the only
+// source and the machine's real keys never reach these assertions.
+const previousOpenCodeDb = process.env.OPENCODE_DB;
+process.env.OPENCODE_DB = path.join(temporaryQuotaDataDirectory, 'no-such-opencode.db');
 
 // readAuthFile reads ~/.local/share/opencode/auth.json via fs.readFileSync.
 // Stub fs to serve a known auth entry so the providers treat themselves as
@@ -35,6 +40,8 @@ type MockResponseInit = { ok?: boolean; status?: number };
 after(() => {
   if (previousQuotaDataDirectory === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
   else process.env.OPENCHAMBER_DATA_DIR = previousQuotaDataDirectory;
+  if (previousOpenCodeDb === undefined) delete process.env.OPENCODE_DB;
+  else process.env.OPENCODE_DB = previousOpenCodeDb;
   fs.rmSync(temporaryQuotaDataDirectory, { recursive: true, force: true });
 });
 

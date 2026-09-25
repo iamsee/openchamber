@@ -13,6 +13,7 @@ import {
   SETTINGS_SELECT_SIZE,
   SETTINGS_OPTION_STACK_CLASS,
 } from '@/components/sections/shared/SettingsSection';
+import { SessionWarmingCheckbox } from './SessionWarmingCheckbox';
 import { SettingsInfoHint } from '@/components/sections/shared/SettingsInfoHint';
 import { loadDesktopSettings, updateDesktopSettings } from '@/lib/persistence';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -24,6 +25,7 @@ import { parseModelIdentifier } from '@/lib/modelIdentifier';
 import { isAutoModel } from '@/lib/routing/autoModel';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { isPrimaryMode } from '@/components/chat/mobileControlsUtils';
+import { listModelVariantIds, type ModelVariantSource } from '@/lib/modelVariants';
 
 const getDisplayModel = (
   storedModel: string | undefined
@@ -60,7 +62,7 @@ export const DefaultsSettings: React.FC = () => {
   const pickedAgentPinsModel = useConfigStore((state) => {
     if (state.agentSelectionSource !== 'manual') return false;
     const agent = state.agents.find((candidate) => candidate.name === state.currentAgentName);
-    return Boolean(agent?.model?.providerID && agent.model.modelID);
+    return Boolean(agent?.model?.providerID && agent.model.id);
   });
   const chatHasOwnModel = Boolean(
     pickedAgentPinsModel
@@ -275,11 +277,9 @@ export const DefaultsSettings: React.FC = () => {
     if (!parsedModel.providerId || !parsedModel.modelId) return [];
     const provider = providers.find((p) => p.id === parsedModel.providerId);
     const model = provider?.models.find((m: Record<string, unknown>) => (m as { id?: string }).id === parsedModel.modelId) as
-      | { variants?: Record<string, unknown> }
+      | { variants?: ModelVariantSource }
       | undefined;
-    const variants = model?.variants;
-    if (!variants) return [];
-    return Object.keys(variants);
+    return listModelVariantIds(model?.variants);
   }, [parsedModel.modelId, parsedModel.providerId, providers]);
 
   const supportsVariants = availableVariants.length > 0;
@@ -367,6 +367,7 @@ export const DefaultsSettings: React.FC = () => {
               label={t('settings.openchamber.defaults.field.showDeletionDialog')}
               ariaLabel={t('settings.openchamber.defaults.field.showDeletionDialogAria')}
             />
+            <SessionWarmingCheckbox />
           </SettingsInset>
 
           <div className="space-y-3 pt-6">

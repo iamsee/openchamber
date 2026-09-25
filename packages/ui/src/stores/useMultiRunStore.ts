@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
 import { routeMessage, useSessionUIStore } from '@/sync/session-ui-store';
 import { devtools } from 'zustand/middleware';
 import type { CreateMultiRunParams, CreateMultiRunResult } from '@/types/multirun';
 import { opencodeClient } from '@/lib/opencode/client';
+import { fetchSessionKnowledge, reportSessionKnowledgeDelivered } from '@/lib/sessionKnowledgeApi';
 import { getWorktreeSetupWaitEnabled, saveWorktreeSetupCommands } from '@/lib/openchamberConfig';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
 import { createWorktreeWithDefaults, resolveRootTrackingRemote } from '@/lib/worktrees/worktreeCreate';
@@ -219,10 +220,11 @@ export const useMultiRunStore = create<MultiRunStore>()(
               });
 
               try {
-                const createRun = (runDirectory: string) => createMultiRunSession(client, {
+                const createRun = (runDirectory: string) => createMultiRunSession({
                   title: sessionTitle, directory: runDirectory,
                   identity: { group: membershipGroup, groupSlug, runGroup, providerID: model.providerID,
                     modelID: model.modelID, index: count > 1 ? index : undefined, role: 'run' },
+                  selection: { model: { providerID: model.providerID, id: model.modelID, variant: model.variant }, agent },
                 }, assertCurrent);
                 if (!shouldIsolateRuns) {
                   const session = await createRun(directory);
@@ -316,9 +318,14 @@ export const useMultiRunStore = create<MultiRunStore>()(
                 createdRuns.map(async (run) => {
                   try {
                     assertCurrent();
-                    const text = await expandText(run.prompt).catch(() => run.prompt);
+                    // Each run is a fresh session, so it is owed the project's
+                    // standing context exactly as a composer send would be.
+                    const [text, knowledge] = await Promise.all([
+                      expandText(run.prompt).catch(() => run.prompt),
+                      fetchSessionKnowledge(run.worktreePath, run.sessionId),
+                    ]);
                     assertCurrent();
-                    await routeMessage({
+                    const route = await routeMessage({
                       runtimeKey,
                       sessionId: run.sessionId,
                       directory: run.worktreePath,
@@ -328,7 +335,13 @@ export const useMultiRunStore = create<MultiRunStore>()(
                       variant: run.variant,
                       agent,
                       files: filesForMessage,
+                      additionalParts: knowledge.text
+                        ? [{ text: knowledge.text, synthetic: true, systemContext: 'session-knowledge' }]
+                        : undefined,
                     });
+                    if (knowledge.text && route !== 'shell') {
+                      void reportSessionKnowledgeDelivered(run.worktreePath, run.sessionId, knowledge.signature);
+                    }
                   } catch (err) {
                     console.warn('[MultiRun] Failed to start run:', err);
                   }

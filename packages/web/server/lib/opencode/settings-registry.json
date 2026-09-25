@@ -120,6 +120,12 @@
     "agentWebToolEnabled": {
       "scope": "instance"
     },
+    "browserProvider": {
+      "scope": "instance"
+    },
+    "agentNotifyToolEnabled": {
+      "scope": "instance"
+    },
     "agentMemoryToolEnabled": {
       "scope": "instance"
     },
@@ -222,10 +228,14 @@
     "sidebarProjectDisplayMode": {
       "scope": "profile"
     },
-    "sidebarSessionGroupingMode": {
-      "scope": "profile"
+    "sidebarViewMode": {
+      "scope": "profile",
+      "perSurface": true
     },
     "sidebarProjectSortOrder": {
+      "scope": "profile"
+    },
+    "sidebarWorktreeSortOrder": {
       "scope": "profile"
     },
     "sidebarShowRecentSection": {
@@ -350,9 +360,6 @@
         "desktop",
         "vscode"
       ]
-    },
-    "showOpenCodeRestartConfirm": {
-      "scope": "profile"
     },
     "allowPromptingSubagentSessions": {
       "scope": "profile"
@@ -554,9 +561,6 @@
     "responseStyleCustomInstructions": {
       "scope": "profile"
     },
-    "optimizeSystemPrompt": {
-      "scope": "profile"
-    },
     "pwaAppName": {
       "scope": "instance",
       "surfaces": [
@@ -683,6 +687,14 @@
       "local": true
     },
     "walkthroughTocWidth": {
+      "scope": "device",
+      "local": true
+    },
+    "diffFileListMode": {
+      "scope": "device",
+      "local": true
+    },
+    "diffFileTreeWidth": {
       "scope": "device",
       "local": true
     },

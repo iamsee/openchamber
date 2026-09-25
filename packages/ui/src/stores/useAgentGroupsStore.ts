@@ -6,13 +6,17 @@ import { useProjectsStore } from './useProjectsStore';
 import { deleteSessionInDirectory } from '@/sync/session-actions';
 import { listGlobalSessionPages } from './globalSessions';
 import type { WorktreeMetadata } from '@/types/worktree';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
+import type { SessionPageLister } from './globalSessions';
 import { buildAgentGroups, type AgentGroup, type AgentGroupSession } from '@/lib/multirun/groups';
 import { getMultiRunIdentity } from '@/lib/multirun/identity';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { checkIsGitRepository } from '@/lib/gitApi';
 
 export type { AgentGroup, AgentGroupSession } from '@/lib/multirun/groups';
+
+const listSessionPage: SessionPageLister = (options) => opencodeClient.listSessionsPage(options);
+
 let loadGeneration = 0;
 
 // ---------------------------------------------------------------------------
@@ -129,14 +133,15 @@ export const useAgentGroupsStore = create<Store>()(
         }
 
         // 2. Fetch sessions for each worktree directory (parallel, max 5)
-        const api = opencodeClient.getApiClient();
         const allSessions: Session[] = [];
         const failedDirectories = new Set<string>();
 
         const fetchDir = async (dir: string) => {
           try {
             if (generation !== loadGeneration || runtimeKey !== getRuntimeKey()) return;
-            const list = await listGlobalSessionPages(api, { directory: dir, archived: true, narrowToArchived: false, pageSize: 500 });
+            // v2 has no archived filter: the list carries every session in the
+            // directory, archived ones included, across all its pages.
+            const list = await listGlobalSessionPages(listSessionPage, { directory: dir, pageSize: 500 });
             for (const s of list) if (s?.id) allSessions.push(s);
           } catch {
             failedDirectories.add(dir);
@@ -254,9 +259,7 @@ export const useAgentGroupsStore = create<Store>()(
           if (normalize(projectRef.path) === path) continue;
 
           try {
-            const remaining = await listGlobalSessionPages(opencodeClient.getSdkClient(), {
-              directory: path, archived: true, narrowToArchived: false, pageSize: 500,
-            });
+            const remaining = await listGlobalSessionPages(listSessionPage, { directory: path, pageSize: 500 });
             assertCurrent();
             if (remaining.length > 0) { failedWorktreePaths.push(path); continue; }
             await removeProjectWorktree(projectRef, source, { deleteLocalBranch: true });

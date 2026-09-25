@@ -170,6 +170,7 @@ export const CommandsSidebar: React.FC<CommandsSidebarProps> = ({ onItemSelect }
       template: command.template,
       agent: command.agent,
       model: command.model,
+      subagent: command.subagent,
     });
     setSelectedCommand(newName);
 
@@ -207,6 +208,8 @@ export const CommandsSidebar: React.FC<CommandsSidebarProps> = ({ onItemSelect }
       template: renameDialogCommand.template,
       agent: renameDialogCommand.agent,
       model: renameDialogCommand.model,
+      subagent: renameDialogCommand.subagent,
+      scope: renameDialogCommand.scope,
     }, settingsDirectory);
 
     if (success) {

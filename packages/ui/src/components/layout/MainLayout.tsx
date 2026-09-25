@@ -15,20 +15,15 @@ import { HelpDialog } from '../ui/HelpDialog';
 import { OpenCodeStatusDialog } from '../ui/OpenCodeStatusDialog';
 import { SessionSidebar } from '@/components/session/SessionSidebar';
 import { SessionDialogs } from '@/components/session/SessionDialogs';
-import { SessionWorktreeMoveConfirmDialog } from '@/components/session/sidebar/SessionWorktreeMoveConfirmDialog';
 import { ScheduledTasksDialog } from '@/components/session/ScheduledTasksDialog';
 import { ArchiveView } from '@/components/views/ArchiveView';
 import { WorktreesView } from '@/components/views/WorktreesView';
+import { UsageStatsView } from '@/components/views/usage/UsageStatsView';
 import { DiffWorkerProvider } from '@/contexts/DiffWorkerProvider';
 import { MultiRunLauncher } from '@/components/multirun';
 
 import { useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
-import {
-  cancelSessionTreeMove,
-  confirmSessionTreeMove,
-  useSessionTreeMoveConfirmation,
-} from '@/lib/worktrees/sessionWorktreeMove';
 import { useUpdatePolling } from '@/hooks/useUpdatePolling';
 import { useTerminalSessionKeepalive } from '@/hooks/useTerminalSessionKeepalive';
 import { useDeviceInfo } from '@/lib/device';
@@ -69,6 +64,7 @@ export const MainLayout: React.FC = () => {
     const multiRunLauncherPrefillPrompt = useUIStore((state) => state.multiRunLauncherPrefillPrompt);
     const isScheduledTasksPageOpen = useUIStore((state) => state.isScheduledTasksDialogOpen);
     const isArchivePageOpen = useUIStore((state) => state.isArchivePageOpen);
+    const isUsageStatsPageOpen = useUIStore((state) => state.isUsageStatsPageOpen);
     const worktreesPageProjectId = useUIStore((state) => state.worktreesPageProjectId);
     const openGuestPageId = useUIStore((state) => state.openGuestPageId);
     const guestPages = useGuestPages();
@@ -80,7 +76,7 @@ export const MainLayout: React.FC = () => {
     // Any full-page surface replacing the chat area. While open, the chat is
     // fully hidden (not just covered) so none of its floating chrome bleeds
     // through, and selecting a session or draft anywhere closes the surface.
-    const isSurfacePageOpen = isScheduledTasksPageOpen || isArchivePageOpen || Boolean(worktreesPageProjectId) || isMultiRunLauncherOpen || Boolean(guestPage);
+    const isSurfacePageOpen = isScheduledTasksPageOpen || isArchivePageOpen || isUsageStatsPageOpen || Boolean(worktreesPageProjectId) || isMultiRunLauncherOpen || Boolean(guestPage);
 
     React.useEffect(() => {
         const closeSurfacePages = () => useUIStore.getState().closeMainSurfaces();
@@ -99,7 +95,6 @@ export const MainLayout: React.FC = () => {
 
     useUpdatePolling();
 
-    const sessionTreeMoveConfirmation = useSessionTreeMoveConfirmation();
 
     React.useEffect(() => {
         const previous = useUIStore.getState().isMobile;
@@ -118,12 +113,6 @@ export const MainLayout: React.FC = () => {
                 <HelpDialog />
                 <OpenCodeStatusDialog />
                 <SessionDialogs />
-                <SessionWorktreeMoveConfirmDialog
-                    value={sessionTreeMoveConfirmation}
-                    onMoveSessionOnly={() => confirmSessionTreeMove(false)}
-                    onMoveAllChanges={() => confirmSessionTreeMove(true)}
-                    onCancel={cancelSessionTreeMove}
-                />
 
                 {/* Persistent top-left controls (toggle + project actions) that
                     stay put while the sidebar/header animate beneath them. */}
@@ -168,6 +157,11 @@ export const MainLayout: React.FC = () => {
                                             )}
                                             <ErrorBoundary><ScheduledTasksDialog /></ErrorBoundary>
                                             <ErrorBoundary><ArchiveView /></ErrorBoundary>
+                                            {isUsageStatsPageOpen && (
+                                                <div className="absolute inset-0 z-10 bg-background">
+                                                    <ErrorBoundary><UsageStatsView /></ErrorBoundary>
+                                                </div>
+                                            )}
                                             <ErrorBoundary><WorktreesView /></ErrorBoundary>
                                             {guestPage && <div className="absolute inset-0 z-10 bg-background">
                                                 <ErrorBoundary><PluginPane mode={`plugin:${guestPage.id}`} surface="page" item={null}

@@ -1,4 +1,5 @@
-import type { OpencodeClient, Session } from '@opencode-ai/sdk/v2';
+import { opencodeClient } from '@/lib/opencode/client';
+import type { Session } from '@/lib/opencode/model';
 import { flattenAssistantTextParts } from '@/lib/messages/messageText';
 import { getMultiRunIdentity, isFusionSource, type MultiRunIdentity } from './identity';
 
@@ -11,7 +12,6 @@ export type FusionSource = {
 
 /** Revalidate selected IDs before reading their output. A failed read is not an empty result. */
 export async function loadFusionOutputs(
-  client: OpencodeClient,
   sources: FusionSource[],
   anchor: MultiRunIdentity,
   assertCurrent: () => void,
@@ -19,22 +19,21 @@ export async function loadFusionOutputs(
   const outputs = await Promise.all(sources.map(async (source) => {
     assertCurrent();
     const directory = source.directory ?? source.session.directory;
-    const current = await client.session.get({ sessionID: source.session.id, directory }, { throwOnError: true });
+    const current = await opencodeClient.getSession(source.session.id, directory);
     assertCurrent();
-    if (!current.data || !isFusionSource(anchor, getMultiRunIdentity(current.data, source.projectDirectory ?? current.data.directory))) {
+    if (!isFusionSource(anchor, getMultiRunIdentity(current, source.projectDirectory ?? current.directory))) {
       throw new Error('Fusion source membership changed');
     }
-    const result = await client.session.messages({ sessionID: source.session.id, directory, limit: 50 }, { throwOnError: true });
+    const page = await opencodeClient.getSessionMessages(source.session.id, { limit: 50 }, directory);
     assertCurrent();
-    if (!result.data) throw new Error('Fusion source messages unavailable');
     let text = '';
-    for (let index = result.data.length - 1; index >= 0; index -= 1) {
-      const record = result.data[index];
+    // v2 pages messages newest first, so the first assistant record is the last reply.
+    for (const record of page.items) {
       if (record.info.role !== 'assistant') continue;
       text = flattenAssistantTextParts(record.parts).trim();
       break;
     }
-    return { source: { ...source, session: current.data }, text };
+    return { source: { ...source, session: current }, text };
   }));
   assertCurrent();
   return outputs.filter((output) => output.text.length > 0);
