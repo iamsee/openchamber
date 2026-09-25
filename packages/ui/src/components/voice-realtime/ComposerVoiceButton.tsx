@@ -69,7 +69,7 @@ export const ComposerVoiceButton: React.FC<ComposerVoiceButtonProps> = ({
             aria-label={sessionLive ? t('chat.voice.stop') : t('chat.voice.start')}
             aria-pressed={sessionLive}
         >
-            <Icon name={sessionLive ? 'record-circle' : 'smartphone'} className={cn(iconSizeClass, 'text-current')} />
+            <Icon name={sessionLive ? 'mic' : 'smartphone'} className={cn(iconSizeClass, 'text-current')} />
         </button>
     );
 };
