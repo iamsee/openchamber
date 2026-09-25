@@ -179,6 +179,21 @@
     "sttLanguage": {
       "scope": "profile"
     },
+    "sttApiKey": {
+      "scope": "instance"
+    },
+    "openaiCompatibleUrl": {
+      "scope": "instance"
+    },
+    "openaiCompatibleApiKey": {
+      "scope": "instance"
+    },
+    "openaiCompatibleVoice": {
+      "scope": "instance"
+    },
+    "openaiCompatibleTtsModel": {
+      "scope": "instance"
+    },
     "realtimeVoiceEnabled": {
       "scope": "profile"
     },

@@ -55,6 +55,10 @@ export const createSettingsHelpers = (dependencies) => {
   const PWA_APP_NAME_MAX_LENGTH = 64;
   const STT_SERVER_URL_MAX_LENGTH = 2048;
   const STT_MODEL_MAX_LENGTH = 256;
+  // Voice config keys that round-trip through the settings document so a fresh
+  // origin hydrates the full voice configuration (single-user, gated UI).
+  const VOICE_KEY_MAX_LENGTH = 2048;
+  const VOICE_MODEL_MAX_LENGTH = 256;
   const STT_LANGUAGE_MAX_LENGTH = 64;
   const REALTIME_VOICE_URL_MAX_LENGTH = 2048;
   const REALTIME_VOICE_MODEL_MAX_LENGTH = 256;
@@ -965,6 +969,36 @@ export const createSettingsHelpers = (dependencies) => {
       const trimmed = candidate.sttLanguage.trim();
       if (trimmed.length <= STT_LANGUAGE_MAX_LENGTH) {
         result.sttLanguage = trimmed;
+      }
+    }
+    if (typeof candidate.sttApiKey === 'string') {
+      const trimmed = candidate.sttApiKey.trim();
+      if (trimmed.length <= VOICE_KEY_MAX_LENGTH) {
+        result.sttApiKey = trimmed;
+      }
+    }
+    if (typeof candidate.openaiCompatibleUrl === 'string') {
+      const trimmed = candidate.openaiCompatibleUrl.trim();
+      if (trimmed.length <= STT_SERVER_URL_MAX_LENGTH) {
+        result.openaiCompatibleUrl = trimmed;
+      }
+    }
+    if (typeof candidate.openaiCompatibleApiKey === 'string') {
+      const trimmed = candidate.openaiCompatibleApiKey.trim();
+      if (trimmed.length <= VOICE_KEY_MAX_LENGTH) {
+        result.openaiCompatibleApiKey = trimmed;
+      }
+    }
+    if (typeof candidate.openaiCompatibleVoice === 'string') {
+      const trimmed = candidate.openaiCompatibleVoice.trim();
+      if (trimmed.length <= VOICE_MODEL_MAX_LENGTH) {
+        result.openaiCompatibleVoice = trimmed;
+      }
+    }
+    if (typeof candidate.openaiCompatibleTtsModel === 'string') {
+      const trimmed = candidate.openaiCompatibleTtsModel.trim();
+      if (trimmed.length <= VOICE_MODEL_MAX_LENGTH) {
+        result.openaiCompatibleTtsModel = trimmed;
       }
     }
 

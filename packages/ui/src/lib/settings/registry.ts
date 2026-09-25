@@ -280,6 +280,14 @@ export const SETTINGS_REGISTRY = {
   sttModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttModel') }),
   sttLocalModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttLocalModel') }),
   sttLanguage: field({ scope: 'profile', parse: parseTrimmedStringUpTo(64), ui: configField('sttLanguage') }),
+  // Voice credentials and TTS endpoints round-trip through the server settings
+  // store (single-user, password-gated deployment): the server document is the
+  // source of truth so a fresh origin hydrates the full voice configuration.
+  sttApiKey: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('sttApiKey') }),
+  openaiCompatibleUrl: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('openaiCompatibleUrl') }),
+  openaiCompatibleApiKey: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('openaiCompatibleApiKey') }),
+  openaiCompatibleVoice: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleVoice') }),
+  openaiCompatibleTtsModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleTtsModel') }),
 
   // ── Realtime voice conversation (plan §6: exactly these three keys) ──
   realtimeVoiceEnabled: field({ scope: 'profile', parse: parseBoolean, ui: configField('realtimeVoiceEnabled') }),

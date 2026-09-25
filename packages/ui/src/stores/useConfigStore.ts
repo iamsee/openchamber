@@ -3457,6 +3457,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiCompatibleUrl', url);
                     }
+                    updateDesktopSettings({ openaiCompatibleUrl: url }).catch(() => {});
                 },
 
                 setOpenaiCompatibleApiKey: (apiKey: string) => {
@@ -3464,6 +3465,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiCompatibleApiKey', apiKey);
                     }
+                    updateDesktopSettings({ openaiCompatibleApiKey: apiKey }).catch(() => {});
                 },
 
                 setOpenaiCompatibleVoice: (voice: string) => {
@@ -3471,6 +3473,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiCompatibleVoice', voice);
                     }
+                    updateDesktopSettings({ openaiCompatibleVoice: voice }).catch(() => {});
                 },
 
                 setOpenaiCompatibleTtsModel: (model: string) => {
@@ -3478,6 +3481,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiCompatibleTtsModel', model);
                     }
+                    updateDesktopSettings({ openaiCompatibleTtsModel: model }).catch(() => {});
                 },
 
                 setDictationEnabled: (enabled: boolean) => {
@@ -3509,6 +3513,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('sttApiKey', apiKey);
                     }
+                    updateDesktopSettings({ sttApiKey: apiKey }).catch(() => {});
                 },
 
                 setSttModel: (model: string) => {
