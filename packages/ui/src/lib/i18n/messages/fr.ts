@@ -3510,8 +3510,8 @@ export const dict = {
   'chat.compaction.failed': 'La compaction a échoué',
   'chat.compaction.showSummary': 'Afficher le résumé',
   'chat.compaction.hideSummary': 'Masquer le résumé',
-  'chat.revertPopover.staged': '{count} messages prêts à être supprimés',
-  'chat.revertPopover.clear': 'Conserver les messages',
-  'chat.revertPopover.commit': 'Supprimer définitivement',
+  'chat.revertPopover.staged': 'Annulés : {count}',
+  'chat.revertPopover.clear': 'Conserver',
+  'chat.revertPopover.commit': 'Supprimer',
   'chat.workStatus.mcp.needsAuthHint': 'Connectez-vous à ce serveur MCP depuis Paramètres → MCP.',
 } as const;

@@ -3512,8 +3512,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': '압축에 실패했습니다',
   'chat.compaction.showSummary': '요약 보기',
   'chat.compaction.hideSummary': '요약 숨기기',
-  'chat.revertPopover.staged': '삭제 대기 중인 메시지 {count}개',
-  'chat.revertPopover.clear': '메시지 유지',
-  'chat.revertPopover.commit': '영구 삭제',
+  'chat.revertPopover.staged': '되돌림: {count}개',
+  'chat.revertPopover.clear': '유지',
+  'chat.revertPopover.commit': '삭제',
   'chat.workStatus.mcp.needsAuthHint': '설정 → MCP에서 이 MCP 서버에 로그인하세요.',
 };

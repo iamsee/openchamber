@@ -3513,8 +3513,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': 'La compactación falló',
   'chat.compaction.showSummary': 'Mostrar resumen',
   'chat.compaction.hideSummary': 'Ocultar resumen',
-  'chat.revertPopover.staged': '{count} mensajes preparados para eliminar',
-  'chat.revertPopover.clear': 'Conservar mensajes',
-  'chat.revertPopover.commit': 'Eliminar definitivamente',
+  'chat.revertPopover.staged': 'Revertidos: {count}',
+  'chat.revertPopover.clear': 'Conservar',
+  'chat.revertPopover.commit': 'Eliminar',
   'chat.workStatus.mcp.needsAuthHint': 'Inicia sesión en este servidor MCP desde Ajustes → MCP.',
 };

@@ -3513,8 +3513,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': 'Не вдалося стиснути',
   'chat.compaction.showSummary': 'Показати підсумок',
   'chat.compaction.hideSummary': 'Сховати підсумок',
-  'chat.revertPopover.staged': 'Повідомлень до видалення: {count}',
-  'chat.revertPopover.clear': 'Залишити повідомлення',
-  'chat.revertPopover.commit': 'Видалити назавжди',
+  'chat.revertPopover.staged': 'Відкочено: {count}',
+  'chat.revertPopover.clear': 'Залишити',
+  'chat.revertPopover.commit': 'Видалити',
   'chat.workStatus.mcp.needsAuthHint': 'Увійдіть до цього MCP-сервера в Налаштування → MCP.',
 };

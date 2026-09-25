@@ -3512,8 +3512,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': '壓縮失敗',
   'chat.compaction.showSummary': '顯示摘要',
   'chat.compaction.hideSummary': '隱藏摘要',
-  'chat.revertPopover.staged': '{count} 則訊息待刪除',
-  'chat.revertPopover.clear': '保留訊息',
-  'chat.revertPopover.commit': '永久刪除',
+  'chat.revertPopover.staged': '已收回：{count}',
+  'chat.revertPopover.clear': '保留',
+  'chat.revertPopover.commit': '刪除',
   'chat.workStatus.mcp.needsAuthHint': '請在「設定 → MCP」中登入此 MCP 伺服器。',
 };

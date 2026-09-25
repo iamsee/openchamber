@@ -3513,8 +3513,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': '压缩失败',
   'chat.compaction.showSummary': '显示摘要',
   'chat.compaction.hideSummary': '隐藏摘要',
-  'chat.revertPopover.staged': '{count} 条消息待删除',
-  'chat.revertPopover.clear': '保留消息',
-  'chat.revertPopover.commit': '永久删除',
+  'chat.revertPopover.staged': '已撤回：{count}',
+  'chat.revertPopover.clear': '保留',
+  'chat.revertPopover.commit': '删除',
   'chat.workStatus.mcp.needsAuthHint': '请在“设置 → MCP”中登录此 MCP 服务器。',
 };

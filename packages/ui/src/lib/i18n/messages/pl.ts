@@ -3517,8 +3517,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': 'Kompaktowanie nie powiodło się',
   'chat.compaction.showSummary': 'Pokaż podsumowanie',
   'chat.compaction.hideSummary': 'Ukryj podsumowanie',
-  'chat.revertPopover.staged': 'Wiadomości do usunięcia: {count}',
-  'chat.revertPopover.clear': 'Zachowaj wiadomości',
-  'chat.revertPopover.commit': 'Usuń na stałe',
+  'chat.revertPopover.staged': 'Cofnięte: {count}',
+  'chat.revertPopover.clear': 'Zachowaj',
+  'chat.revertPopover.commit': 'Usuń',
   'chat.workStatus.mcp.needsAuthHint': 'Zaloguj się do tego serwera MCP w Ustawienia → MCP.',
 } as const;

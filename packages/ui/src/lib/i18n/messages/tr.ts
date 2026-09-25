@@ -3510,8 +3510,8 @@ export const dict = {
   'chat.compaction.failed': 'Sıkıştırma başarısız oldu',
   'chat.compaction.showSummary': 'Özeti göster',
   'chat.compaction.hideSummary': 'Özeti gizle',
-  'chat.revertPopover.staged': '{count} mesaj kaldırılmak üzere işaretlendi',
-  'chat.revertPopover.clear': 'Mesajları koru',
-  'chat.revertPopover.commit': 'Kalıcı olarak kaldır',
+  'chat.revertPopover.staged': 'Geri alınan: {count}',
+  'chat.revertPopover.clear': 'Koru',
+  'chat.revertPopover.commit': 'Kaldır',
   'chat.workStatus.mcp.needsAuthHint': 'Bu MCP sunucusuna Ayarlar → MCP üzerinden giriş yapın.',
 };

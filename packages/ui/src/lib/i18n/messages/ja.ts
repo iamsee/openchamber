@@ -3512,8 +3512,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.compaction.failed': '圧縮に失敗しました',
   'chat.compaction.showSummary': '要約を表示',
   'chat.compaction.hideSummary': '要約を隠す',
-  'chat.revertPopover.staged': '{count}件のメッセージが削除待ちです',
-  'chat.revertPopover.clear': 'メッセージを残す',
-  'chat.revertPopover.commit': '完全に削除',
+  'chat.revertPopover.staged': '取り消し: {count}件',
+  'chat.revertPopover.clear': '残す',
+  'chat.revertPopover.commit': '削除',
   'chat.workStatus.mcp.needsAuthHint': '設定 → MCP からこの MCP サーバーにサインインしてください。',
 };
