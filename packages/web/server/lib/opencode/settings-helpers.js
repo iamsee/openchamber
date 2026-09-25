@@ -1001,6 +1001,27 @@ export const createSettingsHelpers = (dependencies) => {
         result.openaiCompatibleTtsModel = trimmed;
       }
     }
+    if (typeof candidate.voiceProvider === 'string') {
+      const trimmed = candidate.voiceProvider.trim();
+      if (trimmed.length <= VOICE_MODEL_MAX_LENGTH) {
+        result.voiceProvider = trimmed;
+      }
+    }
+    if (typeof candidate.openaiVoice === 'string') {
+      const trimmed = candidate.openaiVoice.trim();
+      if (trimmed.length <= VOICE_MODEL_MAX_LENGTH) {
+        result.openaiVoice = trimmed;
+      }
+    }
+    if (typeof candidate.openaiApiKey === 'string') {
+      const trimmed = candidate.openaiApiKey.trim();
+      if (trimmed.length <= VOICE_KEY_MAX_LENGTH) {
+        result.openaiApiKey = trimmed;
+      }
+    }
+    if (typeof candidate.showMessageTTSButtons === 'boolean') {
+      result.showMessageTTSButtons = candidate.showMessageTTSButtons;
+    }
 
     // Realtime voice conversation (plan §6: exactly these three keys). The
     // provider mirrors parseRealtimeVoiceProvider in ui/src/lib/settings/parsers.ts.

@@ -288,6 +288,11 @@ export const SETTINGS_REGISTRY = {
   openaiCompatibleApiKey: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('openaiCompatibleApiKey') }),
   openaiCompatibleVoice: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleVoice') }),
   openaiCompatibleTtsModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleTtsModel') }),
+  // Message play-button TTS provider selection and its OpenAI(-compatible) fields.
+  voiceProvider: field({ scope: 'instance', parse: parseTrimmedStringUpTo(64), ui: configField('voiceProvider') }),
+  openaiVoice: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiVoice') }),
+  openaiApiKey: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('openaiApiKey') }),
+  showMessageTTSButtons: field({ scope: 'instance', parse: parseBoolean, ui: configField('showMessageTTSButtons') }),
 
   // ── Realtime voice conversation (plan §6: exactly these three keys) ──
   realtimeVoiceEnabled: field({ scope: 'profile', parse: parseBoolean, ui: configField('realtimeVoiceEnabled') }),

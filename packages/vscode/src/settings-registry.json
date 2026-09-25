@@ -194,6 +194,18 @@
     "openaiCompatibleTtsModel": {
       "scope": "instance"
     },
+    "voiceProvider": {
+      "scope": "instance"
+    },
+    "openaiVoice": {
+      "scope": "instance"
+    },
+    "openaiApiKey": {
+      "scope": "instance"
+    },
+    "showMessageTTSButtons": {
+      "scope": "instance"
+    },
     "realtimeVoiceEnabled": {
       "scope": "profile"
     },

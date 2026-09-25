@@ -3377,6 +3377,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('voiceProvider', provider);
                     }
+                    updateDesktopSettings({ voiceProvider: provider }).catch(() => {});
                 },
 
                 setSpeechRate: (rate: number) => {
@@ -3443,6 +3444,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiVoice', voice);
                     }
+                    updateDesktopSettings({ openaiVoice: voice }).catch(() => {});
                 },
 
                 setOpenaiApiKey: (apiKey: string) => {
@@ -3450,6 +3452,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('openaiApiKey', apiKey);
                     }
+                    updateDesktopSettings({ openaiApiKey: apiKey }).catch(() => {});
                 },
 
                 setOpenaiCompatibleUrl: (url: string) => {
@@ -3571,6 +3574,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('showMessageTTSButtons', String(show));
                     }
+                    updateDesktopSettings({ showMessageTTSButtons: show }).catch(() => {});
                 },
 
                 setTtsInputMode: (mode: 'sanitized' | 'raw' | 'summarized') => {
