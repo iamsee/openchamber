@@ -562,10 +562,6 @@ export const VoiceSettings: React.FC = () => {
     // Realtime voice conversation
     const realtimeVoiceEnabled = useConfigStore((state) => state.realtimeVoiceEnabled);
     const setRealtimeVoiceEnabled = useConfigStore((state) => state.setRealtimeVoiceEnabled);
-    const realtimeVoiceBrain = useConfigStore((state) => state.realtimeVoiceBrain);
-    const setRealtimeVoiceBrain = useConfigStore((state) => state.setRealtimeVoiceBrain);
-    const realtimeVoiceProvider = useConfigStore((state) => state.realtimeVoiceProvider);
-    const setRealtimeVoiceProvider = useConfigStore((state) => state.setRealtimeVoiceProvider);
     const [realtimeVoiceSupported] = useState(() => isRealtimeCaptureSupported());
 
     const [isSayAvailable, setIsSayAvailable] = useState(false);
@@ -1368,95 +1364,9 @@ export const VoiceSettings: React.FC = () => {
                             </p>
                         )}
 
-                        <SettingsControlGroup
-                            title={t('settings.voice.page.field.realtimeVoiceBrain')}
-                            info={(
-                                <ul className="space-y-1">
-                                    <li><strong>{t('settings.voice.page.realtimeVoice.brain.assistant')}</strong> {t('settings.voice.page.tooltip.brainAssistant')}</li>
-                                    <li><strong>{t('settings.voice.page.realtimeVoice.brain.session')}</strong> {t('settings.voice.page.tooltip.brainSession')}</li>
-                                </ul>
-                            )}
-                        >
-                            <SettingsChipGroup
-                                value={realtimeVoiceBrain}
-                                onChange={setRealtimeVoiceBrain}
-                                aria-label={t('settings.voice.page.field.realtimeVoiceBrain')}
-                                className="w-full gap-1.5 sm:gap-2"
-                                options={[
-                                    { value: 'assistant', label: t('settings.voice.page.realtimeVoice.brain.assistant') },
-                                    { value: 'session', label: t('settings.voice.page.realtimeVoice.brain.session') },
-                                ]}
-                            />
-                        </SettingsControlGroup>
-
-                        <SettingsControlGroup title={t('settings.voice.page.realtimeVoice.providerTitle')}>
-                            <div className="space-y-3">
-                                <div className="space-y-1.5">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className={cn(SETTINGS_FIELD_LABEL_CLASS, !realtimeVoiceProvider.url.trim() && "text-[var(--status-error)]")}>
-                                            {t('settings.voice.page.field.serverUrl')}
-                                        </span>
-                                        <SettingsInfoHint>{t('settings.voice.page.realtimeVoice.providerUrlHint')}</SettingsInfoHint>
-                                    </span>
-                                    <div className={cn('relative', SETTINGS_CONTROL_CLUSTER_CLASS)}>
-                                        <input
-                                            type="text"
-                                            value={realtimeVoiceProvider.url}
-                                            onChange={(e) => setRealtimeVoiceProvider({ ...realtimeVoiceProvider, url: e.target.value })}
-                                            placeholder="https://langfuse-relayx.isvbytes.com/v1"
-                                            className={VOICE_TEXT_INPUT_CLASS}
-                                        />
-                                        {realtimeVoiceProvider.url && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setRealtimeVoiceProvider({ ...realtimeVoiceProvider, url: '' })}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                            >
-                                                <Icon name="close" className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <span className={SETTINGS_FIELD_LABEL_CLASS}>API Key</span>
-                                    <span className={SETTINGS_HELPER_CLASS}>
-                                        Optional
-                                    </span>
-                                    <div className={cn('relative', SETTINGS_CONTROL_CLUSTER_CLASS)}>
-                                        <input
-                                            type="password"
-                                            value={realtimeVoiceProvider.apiKey ?? ''}
-                                            onChange={(e) => setRealtimeVoiceProvider({ ...realtimeVoiceProvider, apiKey: e.target.value })}
-                                            placeholder="sk-..."
-                                            className={VOICE_TEXT_INPUT_CLASS}
-                                        />
-                                        {realtimeVoiceProvider.apiKey && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setRealtimeVoiceProvider({ ...realtimeVoiceProvider, apiKey: '' })}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                            >
-                                                <Icon name="close" className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <span className={cn(SETTINGS_FIELD_LABEL_CLASS, !realtimeVoiceProvider.model.trim() && "text-[var(--status-error)]")}>
-                                        {t('settings.voice.page.field.model')}
-                                    </span>
-                                    <div className={cn('relative', SETTINGS_CONTROL_CLUSTER_CLASS)}>
-                                        <input
-                                            type="text"
-                                            value={realtimeVoiceProvider.model}
-                                            onChange={(e) => setRealtimeVoiceProvider({ ...realtimeVoiceProvider, model: e.target.value })}
-                                            placeholder="deepseek-v4-flash-0731"
-                                            className={VOICE_TEXT_INPUT_CLASS}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </SettingsControlGroup>
+                        <p className="typography-meta text-muted-foreground">
+                            {t('settings.voice.page.realtimeVoice.usesChatModelHint')}
+                        </p>
                     </>
                 )}
             </SettingsSection>
