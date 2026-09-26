@@ -170,7 +170,18 @@ export const startRealtimeCapture = async (options: RealtimeCaptureOptions): Pro
     // gesture is refused on iOS, which is why the caller unlocks inside the tap
     // that starts the session (audio-context.ts); this covers desktop autoplay.
     if (context.state !== 'running') {
-      await context.resume().catch(() => undefined);
+      // A resume() with no user activation can stay pending indefinitely
+      // (desktop autoplay policy), which would hang capture startup forever.
+      // Race it with a timeout and verify the state afterwards: a still
+      // suspended context must surface as an error so the caller can tell the
+      // user to tap again, not as a "listening" session with a dead mic.
+      await Promise.race([
+        context.resume().catch(() => undefined),
+        new Promise<void>((resolve) => { setTimeout(resolve, 1500); }),
+      ]);
+    }
+    if (context.state !== 'running') {
+      throw new Error('audio is suspended by the browser — tap the mic again');
     }
     await ensureCaptureProcessor(context);
 

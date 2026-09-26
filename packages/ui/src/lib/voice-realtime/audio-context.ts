@@ -52,7 +52,13 @@ export const unlockRealtimeAudio = async (): Promise<boolean> => {
   try {
     const context = getRealtimeAudioContext();
     if (context.state !== 'running') {
-      await context.resume();
+      // Outside a real user gesture the desktop autoplay policy leaves
+      // resume() pending forever; racing a timeout keeps the promise finite so
+      // callers see `false` and can tell the user to tap again.
+      await Promise.race([
+        context.resume().catch(() => undefined),
+        new Promise<void>((resolve) => { setTimeout(resolve, 1500); }),
+      ]);
     }
 
     // iOS additionally wants a real buffer scheduled inside the gesture before

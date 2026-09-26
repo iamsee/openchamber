@@ -13,7 +13,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { getSyncMessages, getSyncParts, getSyncSessionStatus } from '@/sync/sync-refs';
 import { createRealtimeVoiceClient, type RealtimeVoiceClient, type ServerControl } from '@/lib/voice-realtime/realtime-voice-client';
 import { startRealtimeCapture, type RealtimeCaptureHandle } from '@/lib/voice-realtime/audio-source';
-import { getRealtimeAudioContext, unlockRealtimeAudio } from '@/lib/voice-realtime/audio-context';
+import { getRealtimeAudioContext, isRealtimeAudioSuspended, unlockRealtimeAudio } from '@/lib/voice-realtime/audio-context';
 import { createStreamingTTSPlayer, type StreamingTTSPlayer } from '@/lib/voice-realtime/streaming-tts-player';
 import { createVoiceTimeline, type VoiceTimeline } from '@/lib/voice-realtime/voice-timeline';
 
@@ -79,6 +79,8 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
     const seqRef = useRef(0);
     const spokenOffsetRef = useRef(0);
     const sawFirstTokenRef = useRef(false);
+    const lastFrameAtRef = useRef(0);
+    const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const levelListenersRef = useRef<Set<(level: number) => void>>(new Set());
 
     const onInsertAndSendRef = useRef(options.onInsertAndSend);
@@ -95,6 +97,13 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
         if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
+        }
+    }, []);
+
+    const stopWatchdog = useCallback(() => {
+        if (watchdogRef.current) {
+            clearInterval(watchdogRef.current);
+            watchdogRef.current = null;
         }
     }, []);
 
@@ -170,7 +179,14 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
         setError(null);
         setStateBoth('listening');
         try {
-            await unlockRealtimeAudio();
+            const unlocked = await unlockRealtimeAudio();
+            if (!unlocked) {
+                // The browser refused to start audio (autoplay policy outside a
+                // real gesture, or iOS after backgrounding). Surfacing this is
+                // the difference between one dead-looking session and a user
+                // who knows to tap again — the next tap re-runs the unlock.
+                throw new Error('浏览器音频未解锁：请再点一次麦克风');
+            }
             const context = getRealtimeAudioContext();
             const client = createRealtimeVoiceClient();
             clientRef.current = client;
@@ -232,6 +248,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
             const capture = await startRealtimeCapture({
                 context,
                 onFrame: (pcm16) => {
+                    lastFrameAtRef.current = Date.now();
                     if (clientRef.current === client) client.sendAudio(pcm16, seqRef.current++);
                 },
                 onLevel: (level) => {
@@ -239,27 +256,61 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
                 },
             });
             captureRef.current = capture;
+
+            // Capture stall watchdog. A healthy mic graph emits a frame every
+            // 100 ms — silence included — so any gap means the browser suspended
+            // the shared AudioContext (autoplay policy after a reload, iOS
+            // backgrounding, a lost device). Without this check the session sits
+            // in "listening" with a dead mic and the only symptom is that
+            // nothing ever gets transcribed.
+            lastFrameAtRef.current = Date.now();
+            const stallStartedAt = { value: 0 };
+            stopWatchdog();
+            watchdogRef.current = setInterval(() => {
+                if (!activeRef.current) {
+                    stopWatchdog();
+                    return;
+                }
+                const silentFor = Date.now() - lastFrameAtRef.current;
+                if (silentFor < 2500) {
+                    stallStartedAt.value = 0;
+                    return;
+                }
+                // First sign of trouble: try to resume the shared context — the
+                // original tap's activation may still be fresh enough.
+                getRealtimeAudioContext().resume().catch(() => undefined);
+                if (stallStartedAt.value === 0) {
+                    stallStartedAt.value = Date.now();
+                    return;
+                }
+                if (stateRef.current === 'listening' && Date.now() - stallStartedAt.value > 3000) {
+                    setError('麦克风无音频输入（浏览器暂停了音频）：请再点一次麦克风');
+                    stop();
+                }
+            }, 1000);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
+            stopWatchdog();
             if (activeRef.current) {
                 activeRef.current = false;
                 setActive(false);
                 setStateBoth('idle');
             }
         }
-    }, [setStateBoth, beginStreamingReadback]);
+    }, [setStateBoth, beginStreamingReadback, stopWatchdog]);
 
     const stop = useCallback(() => {
         activeRef.current = false;
         setActive(false);
         stopPoll();
+        stopWatchdog();
         playerRef.current?.clear();
         playerRef.current = null;
         stopCapture();
         clientRef.current?.close();
         clientRef.current = null;
         setStateBoth('idle');
-    }, [stopPoll, stopCapture, setStateBoth]);
+    }, [stopPoll, stopWatchdog, stopCapture, setStateBoth]);
 
     const toggle = useCallback(() => {
         if (activeRef.current) {
@@ -271,13 +322,30 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
         void startListening();
     }, [stop, startListening]);
 
+    // Returning to the page after backgrounding: iOS leaves the shared context
+    // suspended, and desktop Chrome can too. Resuming here needs no new gesture
+    // on desktop; on iOS the watchdog + a re-tap covers the rest.
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const onVisibility = () => {
+            if (document.visibilityState !== 'visible') return;
+            if (!activeRef.current) return;
+            if (isRealtimeAudioSuspended()) {
+                getRealtimeAudioContext().resume().catch(() => undefined);
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => document.removeEventListener('visibilitychange', onVisibility);
+    }, []);
+
     useEffect(() => () => {
         activeRef.current = false;
         stopPoll();
+        stopWatchdog();
         playerRef.current?.clear();
         stopCapture();
         clientRef.current?.close();
-    }, [stopPoll, stopCapture]);
+    }, [stopPoll, stopWatchdog, stopCapture]);
 
     return { active, state, error, toggle, stop, subscribeLevel };
 }
