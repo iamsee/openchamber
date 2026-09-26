@@ -88,6 +88,11 @@ export const parseIntegerInRange = (min: number, max: number): SettingsParser<nu
   finiteNumber.transform((value) => Math.max(min, Math.min(max, Math.round(value)))),
 );
 
+/** Speech rate slider domain: 0.5–2, clamped (not rounded) to stay continuous. */
+export const parseSpeechRate = fromSchema(
+  finiteNumber.transform((value) => Math.max(0.5, Math.min(2, value))),
+);
+
 export const parseIntegerAtLeast = (min: number): SettingsParser<number> => fromSchema(
   finiteNumber.transform((value) => Math.max(min, Math.round(value))),
 );

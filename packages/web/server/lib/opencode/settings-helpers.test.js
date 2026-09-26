@@ -767,7 +767,7 @@ describe('settings registry gate', () => {
     agentControlToolEnabled: true, agentWebToolEnabled: true, browserProvider: 'builtin', agentMemoryToolEnabled: true, agentNotifyToolEnabled: true, openCodeUpdateToastDismissedVersion: '1.0.0',
     autoDeleteEnabled: true, autoDeleteAfterDays: 30, sessionRetentionOnlyArchived: false, sessionRetentionAction: 'archive', terminalShell: 'zsh', terminalLoginShells: ['zsh'],
     openInAppId: 'vscode', dictationEnabled: true, sttProvider: 'local', sttServerUrl: 'http://localhost:8001/v1', sttModel: 'm', sttLocalModel: 'm', sttLanguage: 'en',
-    sttApiKey: 'sk-stt', openaiCompatibleUrl: 'http://localhost:8002/v1', openaiCompatibleApiKey: 'sk-tts', openaiCompatibleVoice: 'zf_001', openaiCompatibleTtsModel: 'kokoro',
+    sttApiKey: 'sk-stt', openaiCompatibleUrl: 'http://localhost:8002/v1', openaiCompatibleApiKey: 'sk-tts', openaiCompatibleVoice: 'zf_001', openaiCompatibleTtsModel: 'kokoro', speechRate: 1.25,
     voiceProvider: 'openai-compatible', openaiVoice: 'zf_001', openaiApiKey: 'sk-openai', showMessageTTSButtons: true,
     realtimeVoiceEnabled: true, realtimeVoiceBrain: 'assistant',
     realtimeVoiceProvider: { url: 'https://langfuse-relayx.isvbytes.com/v1', model: 'deepseek-v4-flash-0731' },

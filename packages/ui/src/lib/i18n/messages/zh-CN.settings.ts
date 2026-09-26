@@ -1985,6 +1985,7 @@ export const settingsDict = {
   'settings.voice.page.field.model': '模型',
   'settings.voice.page.field.voice': '声音',
   'settings.voice.page.field.voiceIdentifierHint': '服务器支持的声音标识符',
+  'settings.voice.page.field.voicePresetPlaceholder': '选择常用音色（可试听）',
   'settings.voice.page.field.configuredAbove': '已在上方配置',
   'settings.voice.page.actions.preview': '预览',
   'settings.voice.page.field.selectVoicePlaceholder': '选择声音',

@@ -194,6 +194,9 @@
     "openaiCompatibleTtsModel": {
       "scope": "instance"
     },
+    "speechRate": {
+      "scope": "instance"
+    },
     "voiceProvider": {
       "scope": "instance"
     },

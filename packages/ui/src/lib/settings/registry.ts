@@ -43,6 +43,7 @@ import {
   parseGuarded,
   parseIntegerAtLeast,
   parseIntegerInRange,
+  parseSpeechRate,
   parseManagedRemoteTunnelPresetTokens,
   parseManagedRemoteTunnelPresets,
   parseModelRefs,
@@ -288,6 +289,10 @@ export const SETTINGS_REGISTRY = {
   openaiCompatibleApiKey: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('openaiCompatibleApiKey') }),
   openaiCompatibleVoice: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleVoice') }),
   openaiCompatibleTtsModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiCompatibleTtsModel') }),
+  // Readback cadence for OpenAI(-compatible) TTS: shared by the conversation
+  // player and the settings preview, synced so every device speaks at the
+  // same rate. Range matches the settings slider (0.5–2).
+  speechRate: field({ scope: 'instance', parse: parseSpeechRate, ui: configField('speechRate') }),
   // Message play-button TTS provider selection and its OpenAI(-compatible) fields.
   voiceProvider: field({ scope: 'instance', parse: parseTrimmedStringUpTo(64), ui: configField('voiceProvider') }),
   openaiVoice: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('openaiVoice') }),

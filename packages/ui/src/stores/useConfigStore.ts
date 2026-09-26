@@ -3386,6 +3386,7 @@ export const useConfigStore = create<ConfigStore>()(
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('speechRate', String(clampedRate));
                     }
+                    updateDesktopSettings({ speechRate: clampedRate }).catch(() => {});
                 },
 
                 setSpeechPitch: (pitch: number) => {

@@ -2008,6 +2008,7 @@ export const settingsDict = {
   'settings.voice.page.field.model': 'Model',
   'settings.voice.page.field.voice': 'Voice',
   'settings.voice.page.field.voiceIdentifierHint': 'Voice identifier supported by the server',
+  'settings.voice.page.field.voicePresetPlaceholder': 'Pick a common voice (audible preview)',
   'settings.voice.page.field.configuredAbove': 'Configured above',
   'settings.voice.page.actions.preview': 'Preview',
   'settings.voice.page.field.selectVoicePlaceholder': 'Select voice',

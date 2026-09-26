@@ -37,6 +37,26 @@ import { disposePreviewAudio } from './voicePreviewAudio';
 
 const VOICE_TEXT_INPUT_CLASS = 'oc-surface-elevated w-full h-7 rounded-lg border border-input bg-surface-elevated px-2 typography-ui-label text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-interactive-border-focus';
 
+/**
+ * Curated Kokoro voices shipped with the packaged Kokoro-82M-v1.1-zh model
+ * (verified against its `voices/` directory — zf_* female, zm_* male). The full
+ * set is 100+ numbered ids; these are the picks surfaced in the picker, the
+ * text input accepts any other id.
+ */
+const KOKORO_CURATED_VOICES: ReadonlyArray<{ id: string; label: string }> = [
+    { id: 'zf_001', label: '女声 · 沉稳' },
+    { id: 'zf_002', label: '女声 · 明亮' },
+    { id: 'zf_004', label: '女声 · 温和' },
+    { id: 'zf_021', label: '女声 · 亲切' },
+    { id: 'zf_032', label: '女声 · 知性' },
+    { id: 'zf_044', label: '女声 · 活泼' },
+    { id: 'zm_009', label: '男声 · 稳重' },
+    { id: 'zm_025', label: '男声 · 深沉' },
+    { id: 'zm_034', label: '男声 · 磁性' },
+    { id: 'zm_041', label: '男声 · 清晰' },
+    { id: 'zm_064', label: '男声 · 沉稳' },
+];
+
 const LOCAL_STT_MODELS = [
     {
         id: 'parakeet-tdt-0.6b-v2-int8',
@@ -1015,13 +1035,33 @@ export const VoiceSettings: React.FC = () => {
                                             <span className={SETTINGS_FIELD_LABEL_CLASS}>{t('settings.voice.page.field.voice')}</span>
                                             <SettingsInfoHint>{t('settings.voice.page.field.voiceIdentifierHint')}</SettingsInfoHint>
                                         </span>
+                                        {/* Curated voice picker: the packaged Kokoro model ships 100+ numbered
+                                            voices (zf_ and zm_ prefixed); a curated set with per-voice audition
+                                            covers the common choice, while the text input below still accepts any
+                                            custom identifier. Picking an item fills the input; the play button
+                                            next to it auditions the current value. */}
+                                        <Select
+                                            value={KOKORO_CURATED_VOICES.some((v) => v.id === openaiCompatibleVoice) ? openaiCompatibleVoice : undefined}
+                                            onValueChange={(value) => {
+                                                if (value) setOpenaiCompatibleVoice(value);
+                                            }}
+                                        >
+                                            <SelectTrigger size={SETTINGS_SELECT_SIZE} className={SETTINGS_SELECT_ROW_TRIGGER_CLASS}>
+                                                <SelectValue placeholder={t('settings.voice.page.field.voicePresetPlaceholder')} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {KOKORO_CURATED_VOICES.map((v) => (
+                                                    <SelectItem key={v.id} value={v.id}>{v.id} · {v.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <div className={cn('flex items-center gap-2', SETTINGS_CONTROL_CLUSTER_CLASS)}>
                                             <div className="relative min-w-0 flex-1">
                                                 <input
                                                     type="text"
                                                     value={openaiCompatibleVoice}
                                                     onChange={(e) => setOpenaiCompatibleVoice(e.target.value)}
-                                                    placeholder="af_sky"
+                                                    placeholder="zf_001"
                                                     className={VOICE_TEXT_INPUT_CLASS}
                                                 />
                                             </div>

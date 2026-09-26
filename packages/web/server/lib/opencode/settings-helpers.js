@@ -1001,6 +1001,9 @@ export const createSettingsHelpers = (dependencies) => {
         result.openaiCompatibleTtsModel = trimmed;
       }
     }
+    if (typeof candidate.speechRate === 'number' && Number.isFinite(candidate.speechRate)) {
+      result.speechRate = Math.max(0.5, Math.min(2, candidate.speechRate));
+    }
     if (typeof candidate.voiceProvider === 'string') {
       const trimmed = candidate.voiceProvider.trim();
       if (trimmed.length <= VOICE_MODEL_MAX_LENGTH) {
