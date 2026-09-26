@@ -53,7 +53,7 @@ const messageText = (m: SyncMessage): string => {
 const sessionIsBusy = (sessionId: string): boolean => {
     const status = getSyncSessionStatus(sessionId) as { type?: string; busy?: boolean } | undefined;
     if (!status) return false;
-    return status.type === 'busy' || status.busy === true;
+    return status.type === 'busy' || status.type === 'retry' || status.busy === true;
 };
 
 const lastAssistantMessage = (sessionId: string): SyncMessage | null => {
@@ -67,6 +67,7 @@ const lastAssistantMessage = (sessionId: string): SyncMessage | null => {
 export function useVoiceConversation(options: UseVoiceConversationOptions): UseVoiceConversationResult {
     const [state, setState] = useState<VoiceConversationState>('idle');
     const [error, setError] = useState<string | null>(null);
+    const [active, setActive] = useState(false);
 
     const stateRef = useRef<VoiceConversationState>('idle');
     const activeRef = useRef(false);
@@ -151,7 +152,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
                 spokenOffsetRef.current = lastEnqueued;
             }
 
-            const done = sawBusy && !busy;
+            const done = (sawBusy || sawFirstTokenRef.current) && !busy;
             const timedOut = Date.now() - startedAt > THINK_TIMEOUT_MS;
             if (done || timedOut) {
                 stopPoll();
@@ -240,12 +241,17 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
             captureRef.current = capture;
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
-            if (activeRef.current) setStateBoth('idle');
+            if (activeRef.current) {
+                activeRef.current = false;
+                setActive(false);
+                setStateBoth('idle');
+            }
         }
     }, [setStateBoth, beginStreamingReadback]);
 
     const stop = useCallback(() => {
         activeRef.current = false;
+        setActive(false);
         stopPoll();
         playerRef.current?.clear();
         playerRef.current = null;
@@ -261,6 +267,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
             return;
         }
         activeRef.current = true;
+        setActive(true);
         void startListening();
     }, [stop, startListening]);
 
@@ -272,5 +279,5 @@ export function useVoiceConversation(options: UseVoiceConversationOptions): UseV
         clientRef.current?.close();
     }, [stopPoll, stopCapture]);
 
-    return { active: activeRef.current, state, error, toggle, stop, subscribeLevel };
+    return { active, state, error, toggle, stop, subscribeLevel };
 }
