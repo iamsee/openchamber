@@ -23,7 +23,100 @@ export const createStaticRoutesRuntime = (dependencies) => {
     return path.join(__dirname, '..', 'dist');
   };
 
+  // Optional distribution downloads (installer APK/EXE artifacts), served from
+  // a deployment-controlled directory. Disabled unless the environment names
+  // one, so default installs expose nothing.
+  const resolveReleaseDir = () => {
+    const env = typeof process.env.OPENCHAMBER_RELEASE_DIR === 'string' ? process.env.OPENCHAMBER_RELEASE_DIR.trim() : '';
+    return env ? path.resolve(env) : null;
+  };
+
+  const formatReleaseSize = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes < 1024) {
+      return `${Math.max(0, bytes)} B`;
+    }
+    const units = ['kB', 'MB', 'GB'];
+    let value = bytes;
+    let unit = 'B';
+    while (value >= 1024 && units.length > 0) {
+      value /= 1024;
+      unit = units.shift();
+    }
+    return `${value.toFixed(1)} ${unit}`;
+  };
+
+  const renderReleaseIndexPage = (entries) => {
+    const rows = entries.map((entry) => `
+      <tr>
+        <td><a href="/release/${entry.name}" download>${entry.name}</a></td>
+        <td>${formatReleaseSize(entry.size)}</td>
+        <td>${entry.modified}</td>
+      </tr>`).join('');
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenChamber Releases</title>
+  <style>
+    body { font-family: ui-monospace, Menlo, Consolas, monospace; margin: 40px auto; max-width: 720px; }
+    h1 { font-size: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }
+    td:nth-child(2), td:nth-child(3) { color: #777; font-size: 13px; white-space: nowrap; }
+    a { color: inherit; }
+    .empty { color: #999; }
+  </style>
+</head>
+<body>
+  <h1>OpenChamber Releases</h1>
+  ${entries.length > 0 ? `<table><tr><th>File</th><th>Size</th><th>Modified</th></tr>${rows}</table>` : '<p class="empty">No release artifacts published yet.</p>'}
+</body>
+</html>`;
+  };
+
+  const registerReleaseRoutes = (app) => {
+    const releaseDir = resolveReleaseDir();
+    if (!releaseDir) {
+      return;
+    }
+    if (!fs.existsSync(releaseDir)) {
+      console.warn(`Warning: OPENCHAMBER_RELEASE_DIR ${releaseDir} not found; /release/ stays unmounted`);
+      return;
+    }
+    console.log(`Serving release artifacts from ${releaseDir}`);
+    app.use('/release', express.static(releaseDir, { index: false, dotfiles: 'deny' }));
+    app.get(['/release', '/release/'], async (_req, res) => {
+      try {
+        const entries = [];
+        for (const name of await fs.promises.readdir(releaseDir)) {
+          if (name.startsWith('.')) {
+            continue;
+          }
+          const stat = await fs.promises.stat(path.join(releaseDir, name));
+          if (!stat.isFile()) {
+            continue;
+          }
+          entries.push({
+            name,
+            size: stat.size,
+            modified: stat.mtime.toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
+          });
+        }
+        entries.sort((a, b) => b.name.localeCompare(a.name));
+        res.type('html').send(renderReleaseIndexPage(entries));
+      } catch (error) {
+        res.status(500).type('text/plain').send('Failed to list release artifacts');
+      }
+    });
+    // Missing artifacts answer 404 instead of falling through to the SPA.
+    app.use('/release', (_req, res) => {
+      res.status(404).type('text/plain').send('Release artifact not found');
+    });
+  };
+
   const registerStaticRoutes = (app) => {
+    registerReleaseRoutes(app);
     const distPath = resolveDistPath();
 
     if (fs.existsSync(distPath)) {
@@ -260,6 +353,7 @@ export const createStaticRoutesRuntime = (dependencies) => {
 
   return {
     registerApiOnlyFallbackRoutes,
+    registerReleaseRoutes,
     registerStaticRoutes,
   };
 };

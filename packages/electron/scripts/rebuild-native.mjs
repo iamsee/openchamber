@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { rebuild } from '@electron/rebuild';
-import { resolveTargetArchitecture } from './target-architecture.mjs';
+import { resolveTargetArchitecture, resolveTargetPlatform } from './target-architecture.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,6 +136,11 @@ console.log(`[electron] rebuilding native modules against Electron ${electronVer
 // Rebuild against the hoisted root node_modules (bun workspace layout).
 // force=true re-links regardless of cached state; prebuild-install lookup is
 // bypassed by @electron/rebuild in favor of direct node-gyp builds.
+// Cross-platform builds (OPENCHAMBER_TARGET_PLATFORM) rebuild for the target
+// OS; the Windows host path workarounds below only apply when the build host
+// itself is Windows.
+const targetPlatform = resolveTargetPlatform();
+const isCrossPlatform = targetPlatform !== process.platform;
 const rebuildPath = createWindowsRebuildPath(repoRoot);
 let cleanupNodeAddonApi = async () => {};
 try {
@@ -145,6 +150,7 @@ try {
     electronVersion,
     force: true,
     arch: targetArchitecture.electronBuilder,
+    ...(isCrossPlatform ? { platform: targetPlatform } : {}),
     onlyModules: ['node-pty', 'bun-pty'],
   });
 } finally {

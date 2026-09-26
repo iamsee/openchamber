@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveTargetArchitecture } from './target-architecture.mjs';
+import { resolveTargetArchitecture, resolveTargetPlatform } from './target-architecture.mjs';
 import { parseOpenCodeCliVersion, readPinnedOpenCodeCliVersion } from './opencode-cli-version.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -115,16 +115,30 @@ const main = async () => {
     throw new Error(`Invalid OpenCode CLI version: ${version}`);
   }
 
-  const targetArchitecture = resolveTargetArchitecture();
-  const artifact = artifactForPlatform(process.platform, targetArchitecture);
+  const targetPlatform = resolveTargetPlatform();
+  const targetArchitecture = resolveTargetArchitecture({ platform: targetPlatform });
+  const artifact = artifactForPlatform(targetPlatform, targetArchitecture);
   const outputBinary = outputBinaryPath(artifact.binary);
-  const existingVersion = readBinaryVersion(outputBinary);
-  if (existingVersion === version) {
-    console.log(`[electron] bundled OpenCode CLI already prepared: ${outputBinary} (${version})`);
+  // A cross-platform build host cannot execute the target binary, so presence
+  // plus non-empty size stands in for the version check in that case.
+  const isCrossPlatform = targetPlatform !== process.platform;
+  const statBinary = (binaryPath) => {
+    if (!fs.existsSync(binaryPath)) return null;
+    const stat = fs.statSync(binaryPath);
+    return stat.isFile() && stat.size > 0 ? stat.size : null;
+  };
+  if (!isCrossPlatform) {
+    const existingVersion = readBinaryVersion(outputBinary);
+    if (existingVersion === version) {
+      console.log(`[electron] bundled OpenCode CLI already prepared: ${outputBinary} (${version})`);
+      return;
+    }
+  } else if (statBinary(outputBinary) !== null) {
+    console.log(`[electron] bundled OpenCode CLI already staged: ${outputBinary} (${version})`);
     return;
   }
 
-  const cacheDir = path.join(cacheRoot, version, `${process.platform}-${targetArchitecture.opencode}`);
+  const cacheDir = path.join(cacheRoot, version, `${targetPlatform}-${targetArchitecture.opencode}`);
   const archiveName = `cli-${artifact.target}-${version}.tgz`;
   const archivePath = path.join(cacheDir, archiveName);
   const url = artifactUrl(artifact.target, version);
@@ -150,9 +164,15 @@ const main = async () => {
   fs.copyFileSync(extractedBinary, outputBinary);
   ensureExecutable(outputBinary);
 
-  const preparedVersion = readBinaryVersion(outputBinary);
-  if (preparedVersion !== version) {
-    throw new Error(`Prepared OpenCode CLI version mismatch: expected ${version}, got ${preparedVersion || 'unknown'}`);
+  if (isCrossPlatform) {
+    if (statBinary(outputBinary) === null) {
+      throw new Error(`Prepared OpenCode CLI missing or empty: ${outputBinary}`);
+    }
+  } else {
+    const preparedVersion = readBinaryVersion(outputBinary);
+    if (preparedVersion !== version) {
+      throw new Error(`Prepared OpenCode CLI version mismatch: expected ${version}, got ${preparedVersion || 'unknown'}`);
+    }
   }
 
   console.log(`[electron] prepared OpenCode CLI ${version}: ${outputBinary}`);

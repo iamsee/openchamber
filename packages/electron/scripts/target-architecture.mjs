@@ -46,6 +46,29 @@ export const readElectronBuilderArchitecture = (args = []) => {
   return [...architectures][0];
 };
 
+const PLATFORMS = new Set(['win32', 'darwin', 'linux']);
+
+/**
+ * Target platform for cross-platform packaging: defaults to the host, and
+ * OPENCHAMBER_TARGET_PLATFORM overrides it for builds that produce artifacts
+ * for another OS (for example a Windows installer from a Linux CI container).
+ */
+export const resolveTargetPlatform = ({
+  environment = process.env,
+  fallbackPlatform = process.platform,
+} = {}) => {
+  const requested = typeof environment.OPENCHAMBER_TARGET_PLATFORM === 'string'
+    ? environment.OPENCHAMBER_TARGET_PLATFORM.trim()
+    : '';
+  if (!requested) {
+    return fallbackPlatform;
+  }
+  if (!PLATFORMS.has(requested)) {
+    throw new Error(`Unsupported OPENCHAMBER_TARGET_PLATFORM ${JSON.stringify(requested)}. Supported platforms: win32, darwin, linux.`);
+  }
+  return requested;
+};
+
 export const resolveTargetArchitecture = ({
   platform = process.platform,
   hostArchitecture = process.arch,

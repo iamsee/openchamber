@@ -3,11 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseOpenCodeCliVersion, readPinnedOpenCodeCliVersion } from './opencode-cli-version.mjs';
+import { resolveTargetPlatform } from './target-architecture.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const electronRoot = path.resolve(__dirname, '..');
 
-const binaryName = () => process.platform === 'win32' ? 'opencode.exe' : 'opencode';
+const targetPlatform = resolveTargetPlatform();
+const isCrossPlatform = targetPlatform !== process.platform;
+
+const binaryName = () => targetPlatform === 'win32' ? 'opencode.exe' : 'opencode';
 
 const runVersion = (binaryPath) => {
   const result = spawnSync(binaryPath, ['--version'], {
@@ -32,8 +36,17 @@ const assertBinary = (binaryPath, expectedVersion) => {
   if (!stat.isFile()) {
     throw new Error(`Bundled OpenCode CLI is not a file: ${binaryPath}`);
   }
-  if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
+  if (stat.size === 0) {
+    throw new Error(`Bundled OpenCode CLI is empty: ${binaryPath}`);
+  }
+  if (targetPlatform !== 'win32' && !isCrossPlatform && (stat.mode & 0o111) === 0) {
     throw new Error(`Bundled OpenCode CLI is not executable: ${binaryPath}`);
+  }
+  // A cross-platform build host cannot execute the target binary; presence
+  // and size checks above are all it can verify directly.
+  if (isCrossPlatform) {
+    console.log(`[electron] verified bundled OpenCode CLI staged for ${targetPlatform}: ${binaryPath}`);
+    return;
   }
   const actualVersion = runVersion(binaryPath);
   if (actualVersion !== expectedVersion) {
