@@ -1,5 +1,6 @@
 import { OpenCodeCompatibilityGate } from '@/components/update/OpenCodeCompatibilityGate';
 import React from 'react';
+import { syncDesktopSettings } from '@/lib/persistence';
 
 import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
 import { OpenCodeUpdateToast } from '@/components/update/OpenCodeUpdateToast';
@@ -685,6 +686,21 @@ function MobileAppContent({ apis }: MobileAppProps) {
   const [connectionEpoch, setConnectionEpoch] = React.useState(0);
   const [runtimeEndpointEpoch, setRuntimeEndpointEpoch] = React.useState(0);
   const [showConnectionRecovery, setShowConnectionRecovery] = React.useState(false);
+  // The native shell skips SessionAuthGate, so the browser-only "sync settings
+  // after unlock" hook never runs for it. The endpoint-change reset covers the
+  // switch itself, but a cold-launch auto-connect can land after that reset's
+  // microtask already raced an unauthenticated fetch. Re-pull the server
+  // document once the connection is actually live so the shared voice
+  // configuration (instance-scoped, single source of truth) reaches this
+  // device's stores instead of staying on local defaults.
+  const settingsSyncedForConnectionRef = React.useRef(false);
+  React.useEffect(() => {
+    if (connectionPhase !== 'connected' || settingsSyncedForConnectionRef.current) {
+      return;
+    }
+    settingsSyncedForConnectionRef.current = true;
+    void syncDesktopSettings().catch(() => undefined);
+  }, [connectionPhase]);
   // Cold-launch auto-connect to the last instance: 'pending'/'attempting' hold the
   // splash so we don't flash the connect screen; 'done' means we either connected or
   // exhausted the attempt (then the connect screen shows).

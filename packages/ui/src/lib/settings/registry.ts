@@ -275,12 +275,12 @@ export const SETTINGS_REGISTRY = {
   terminalShell: field({ scope: 'instance', parse: parseTerminalShell, ui: uiStore('terminalShell', (v) => useUIStore.getState().setTerminalShell(v)) }),
   terminalLoginShells: field({ scope: 'instance', parse: parseTerminalShells(isTerminalShell), ui: uiStore('terminalLoginShells', (v) => useUIStore.getState().setTerminalLoginShells(v)) }),
   openInAppId: field({ scope: 'instance', parse: parseNonEmptyTrimmedString }),
-  dictationEnabled: field({ scope: 'profile', parse: parseBoolean, ui: configField('dictationEnabled') }),
+  dictationEnabled: field({ scope: 'instance', parse: parseBoolean, ui: configField('dictationEnabled') }),
   sttProvider: field({ scope: 'instance', parse: parseSttProvider, ui: configField('sttProvider') }),
   sttServerUrl: field({ scope: 'instance', parse: parseTrimmedStringUpTo(2048), ui: configField('sttServerUrl') }),
   sttModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttModel') }),
   sttLocalModel: field({ scope: 'instance', parse: parseTrimmedStringUpTo(256), ui: configField('sttLocalModel') }),
-  sttLanguage: field({ scope: 'profile', parse: parseTrimmedStringUpTo(64), ui: configField('sttLanguage') }),
+  sttLanguage: field({ scope: 'instance', parse: parseTrimmedStringUpTo(64), ui: configField('sttLanguage') }),
   // Voice credentials and TTS endpoints round-trip through the server settings
   // store (single-user, password-gated deployment): the server document is the
   // source of truth so a fresh origin hydrates the full voice configuration.
@@ -300,8 +300,8 @@ export const SETTINGS_REGISTRY = {
   showMessageTTSButtons: field({ scope: 'instance', parse: parseBoolean, ui: configField('showMessageTTSButtons') }),
 
   // ── Realtime voice conversation (plan §6: exactly these three keys) ──
-  realtimeVoiceEnabled: field({ scope: 'profile', parse: parseBoolean, ui: configField('realtimeVoiceEnabled') }),
-  realtimeVoiceBrain: field({ scope: 'profile', parse: parseOneOf(['assistant', 'session']), ui: configField('realtimeVoiceBrain') }),
+  realtimeVoiceEnabled: field({ scope: 'instance', parse: parseBoolean, ui: configField('realtimeVoiceEnabled') }),
+  realtimeVoiceBrain: field({ scope: 'instance', parse: parseOneOf(['assistant', 'session']), ui: configField('realtimeVoiceBrain') }),
   // Collapsed provider object; secret because it can carry an apiKey:
   // accepted on write, never returned by a read. The device-local copy in
   // the config store's localStorage is the live one (like sttApiKey).

@@ -162,7 +162,7 @@
       "scope": "instance"
     },
     "dictationEnabled": {
-      "scope": "profile"
+      "scope": "instance"
     },
     "sttProvider": {
       "scope": "instance"
@@ -177,7 +177,7 @@
       "scope": "instance"
     },
     "sttLanguage": {
-      "scope": "profile"
+      "scope": "instance"
     },
     "sttApiKey": {
       "scope": "instance"
@@ -210,10 +210,10 @@
       "scope": "instance"
     },
     "realtimeVoiceEnabled": {
-      "scope": "profile"
+      "scope": "instance"
     },
     "realtimeVoiceBrain": {
-      "scope": "profile"
+      "scope": "instance"
     },
     "realtimeVoiceProvider": {
       "scope": "instance",
